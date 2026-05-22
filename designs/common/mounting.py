@@ -9,7 +9,7 @@ import math
 import cadquery as cq
 from designs.common.constants import (
     WALL, CORNER_R, TAPER, DIVIDER,
-    CHAMFER_SIZE, RIM_BAND, RIM_STEP, SIDE_TAPER_ANGLE,
+    CHAMFER_SIZE, RIM_BAND, RIM_STEP,
     PANEL_GROOVE_DEPTH, PANEL_GROOVE_WIDTH, PANEL_BEVEL,
     M3_CLEARANCE_DIA, M3_INSERT_DIA, M3_INSERT_DEPTH,
     MOUNT_BOSS_OD, MOUNT_BOSS_ALIGN_H,
@@ -166,57 +166,6 @@ def add_structural_ribs(body, width, depth, height, chamfer=CHAMFER_SIZE,
                 except Exception:
                     pass
                 body = body.union(rib)
-
-    return body
-
-
-def add_logo_deboss(body, width, depth, height, wall=WALL):
-    """
-    Cut the Somni Labs logo into the FRONT WALL (+Y face) of a shell.
-
-    The logo is a geometric arrangement:
-    - Main rectangle (nameplate)
-    - Accent bar below
-    - Two flanking chevrons
-
-    Cut into the front wall exterior at mid-height, visible from the outside.
-
-    DEPRECATED: Use build_hero_face() for full armor-plate treatment.
-    """
-    logo_depth = 1.2  # how deep the deboss cuts into the wall
-    mid_z = height / 2
-    face_y = depth / 2  # front face Y position
-
-    # Main nameplate rectangle
-    nameplate = (
-        cq.Workplane("XZ")
-        .center(0, mid_z)
-        .rect(80, 16)
-        .extrude(logo_depth)
-        .translate((0, face_y - logo_depth, 0))
-    )
-    body = body.cut(nameplate)
-
-    # Accent bar below nameplate
-    accent = (
-        cq.Workplane("XZ")
-        .center(0, mid_z - 14)
-        .rect(100, 2.5)
-        .extrude(logo_depth)
-        .translate((0, face_y - logo_depth, 0))
-    )
-    body = body.cut(accent)
-
-    # Left chevron
-    for dx in [-55, 55]:
-        chevron = (
-            cq.Workplane("XZ")
-            .center(dx, mid_z)
-            .rect(6, 20)
-            .extrude(logo_depth)
-            .translate((0, face_y - logo_depth, 0))
-        )
-        body = body.cut(chevron)
 
     return body
 
