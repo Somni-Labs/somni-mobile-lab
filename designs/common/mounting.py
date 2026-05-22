@@ -180,6 +180,8 @@ def add_logo_deboss(body, width, depth, height, wall=WALL):
     - Two flanking chevrons
 
     Cut into the front wall exterior at mid-height, visible from the outside.
+
+    DEPRECATED: Use build_hero_face() for full armor-plate treatment.
     """
     logo_depth = 1.2  # how deep the deboss cuts into the wall
     mid_z = height / 2
@@ -215,6 +217,203 @@ def add_logo_deboss(body, width, depth, height, wall=WALL):
             .translate((0, face_y - logo_depth, 0))
         )
         body = body.cut(chevron)
+
+    return body
+
+
+def _build_grid_panel(panel_w, panel_h, grid_size=HEX_SIZE, grid_wall=HEX_WALL,
+                      pocket_depth=HEX_POCKET_EXTRA):
+    """
+    Build a rectangular grid of wall ridges filling a panel region.
+
+    Creates a "waffle" pattern: horizontal + vertical wall strips with
+    rectangular pockets between them. Reads as technical/sci-fi at scale.
+
+    Built on the XZ plane, centered at origin, extruded in +Y.
+    Returns a CadQuery Workplane ready to be translated into position.
+    """
+    wall_height = pocket_depth + 0.01
+    pitch = grid_size + grid_wall
+
+    n_cols = max(1, int(panel_w / pitch))
+    n_rows = max(1, int(panel_h / pitch))
+
+    # Build all horizontal strips as a single compound
+    result = None
+    for row in range(n_rows + 1):
+        z = -panel_h / 2 + row * pitch
+        if abs(z) > panel_h / 2 + grid_wall:
+            continue
+        strip = (
+            cq.Workplane("XZ")
+            .center(0, z)
+            .rect(panel_w, grid_wall)
+            .extrude(wall_height)
+        )
+        result = strip if result is None else result.union(strip)
+
+    # Build all vertical strips
+    for col in range(n_cols + 1):
+        x = -panel_w / 2 + col * pitch
+        if abs(x) > panel_w / 2 + grid_wall:
+            continue
+        strip = (
+            cq.Workplane("XZ")
+            .center(x, 0)
+            .rect(grid_wall, panel_h)
+            .extrude(wall_height)
+        )
+        result = strip if result is None else result.union(strip)
+
+    return result
+
+
+def build_hero_face(body, width, depth, height, wall=WALL, chamfer=CHAMFER_SIZE,
+                    plate_w=HERO_PLATE_W, plate_h=HERO_PLATE_H,
+                    plate_proud=HERO_PLATE_PROUD, plate_recess=HERO_PLATE_RECESS,
+                    hex_panel_recess=HEX_PANEL_RECESS,
+                    groove_w=FRAME_GROOVE_W, groove_d=FRAME_GROOVE_D):
+    """
+    Build the full hero face treatment on the front wall (+Y face).
+
+    Three-layer depth treatment:
+    1. Raised center logo plate with recessed background + raised logo shapes
+    2. Two grid panels (above and below logo plate), recessed into wall
+    3. Frame grooves separating the three zones
+
+    Total depth variation: ~5mm (deepest pocket to top of logo shapes).
+    """
+    hd = depth / 2
+    face_y = hd  # outer surface of front wall
+
+    # Usable Z range on the front face (between chamfer zones)
+    z_lo = chamfer + 2
+    z_hi = height - chamfer - 2
+    face_z_center = (z_lo + z_hi) / 2
+    face_z_extent = z_hi - z_lo
+
+    # Clamp plate_h to available face height (leave margin for grid panels)
+    effective_plate_h = min(plate_h, face_z_extent * 0.6)
+
+    # NOTE: CadQuery's XZ workplane extrudes in the -Y direction.
+    # To place geometry spanning [y_lo, y_hi], extrude (y_hi - y_lo)
+    # and translate to (0, y_hi, 0) so it extends backward from y_hi.
+
+    # --- 1. Raised logo plate ---
+    # Spans face_y to face_y + plate_proud (protrudes outward from wall)
+    logo_plate = (
+        cq.Workplane("XZ")
+        .center(0, face_z_center)
+        .rect(plate_w, effective_plate_h)
+        .extrude(plate_proud)
+        .translate((0, face_y + plate_proud, 0))
+    )
+    body = body.union(logo_plate)
+
+    # Recess the plate surface (except logo shapes)
+    # Cut from the plate outer surface inward by plate_recess
+    plate_recess_cut = (
+        cq.Workplane("XZ")
+        .center(0, face_z_center)
+        .rect(plate_w - 4, effective_plate_h - 4)
+        .extrude(plate_recess)
+        .translate((0, face_y + plate_proud, 0))
+    )
+    body = body.cut(plate_recess_cut)
+
+    # Logo shapes stay at full proud height — they fill the recessed zone
+    # back up to the plate's outer surface. Use a small overlap (0.1mm into
+    # the recessed surface) to ensure the union has overlapping volume and
+    # doesn't fail due to coincident faces.
+    logo_overlap = 0.1
+    # Logo shapes span from (plate top - recess - overlap) to (plate top + 0.01)
+    logo_extrude = plate_recess + logo_overlap + 0.01
+    logo_translate_y = face_y + plate_proud + 0.01  # top of logo shape
+
+    # Main nameplate rectangle
+    nameplate = (
+        cq.Workplane("XZ")
+        .center(0, face_z_center)
+        .rect(80, min(16, effective_plate_h - 2))
+        .extrude(logo_extrude)
+        .translate((0, logo_translate_y, 0))
+    )
+    body = body.union(nameplate)
+
+    # Accent bar below (clamped to within plate Z extent)
+    accent_z = max(face_z_center - 14,
+                   face_z_center - effective_plate_h / 2 + 2)
+    accent_bar = (
+        cq.Workplane("XZ")
+        .center(0, accent_z)
+        .rect(min(100, plate_w - 4), 2.5)
+        .extrude(logo_extrude)
+        .translate((0, logo_translate_y, 0))
+    )
+    body = body.union(accent_bar)
+
+    # Flanking chevrons (clamped to plate width)
+    chevron_dx = min(55, plate_w / 2 - 5)
+    for dx in [-chevron_dx, chevron_dx]:
+        chevron = (
+            cq.Workplane("XZ")
+            .center(dx, face_z_center)
+            .rect(6, min(20, effective_plate_h - 2))
+            .extrude(logo_extrude)
+            .translate((0, logo_translate_y, 0))
+        )
+        body = body.union(chevron)
+
+    # --- 2. Grid panels (above and below logo plate) ---
+    hex_panel_w = plate_w + 20  # slightly wider than logo plate
+
+    # Upper panel
+    upper_z_lo = face_z_center + effective_plate_h / 2 + groove_w + 1
+    upper_z_hi = z_hi
+    upper_h = upper_z_hi - upper_z_lo
+    upper_cz = (upper_z_lo + upper_z_hi) / 2
+
+    # Lower panel
+    lower_z_lo = z_lo
+    lower_z_hi = face_z_center - effective_plate_h / 2 - groove_w - 1
+    lower_h = lower_z_hi - lower_z_lo
+    lower_cz = (lower_z_lo + lower_z_hi) / 2
+
+    for panel_cz, panel_h in [(upper_cz, upper_h), (lower_cz, lower_h)]:
+        if panel_h < 10:
+            continue
+
+        # Cut the recessed panel into the front wall
+        # Cuts from face_y inward by hex_panel_recess
+        panel_recess_box = (
+            cq.Workplane("XZ")
+            .center(0, panel_cz)
+            .rect(hex_panel_w, panel_h)
+            .extrude(hex_panel_recess)
+            .translate((0, face_y, 0))
+        )
+        body = body.cut(panel_recess_box)
+
+        # Build grid walls on the recessed surface
+        # Grid is built at origin extruding in -Y; translate so the grid
+        # top surface sits at face_y - hex_panel_recess (the recessed surface)
+        grid = _build_grid_panel(hex_panel_w, panel_h)
+        if grid is not None:
+            grid = grid.translate((0, face_y - hex_panel_recess, panel_cz))
+            body = body.union(grid)
+
+    # --- 3. Frame grooves ---
+    # Cut into the front wall surface
+    for groove_z in [face_z_center + effective_plate_h / 2 + groove_w / 2,
+                     face_z_center - effective_plate_h / 2 - groove_w / 2]:
+        groove = (
+            cq.Workplane("XZ")
+            .center(0, groove_z)
+            .rect(hex_panel_w + 10, groove_w)
+            .extrude(groove_d)
+            .translate((0, face_y, 0))
+        )
+        body = body.cut(groove)
 
     return body
 

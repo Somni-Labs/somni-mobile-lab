@@ -5,7 +5,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from designs.common.constants import WALL, CORNER_R, CHAMFER_SIZE, PANEL_GROOVE_DEPTH, LED_CHANNEL_W, LED_CHANNEL_D, RIDGE_H, RIM_BAND, RIM_STEP
-from designs.common.mounting import build_sculpted_shell, add_chamfer_led_channels, cut_armor_panels, add_ridge, add_structural_ribs
+from designs.common.mounting import build_sculpted_shell, add_chamfer_led_channels, cut_armor_panels, add_ridge, add_structural_ribs, build_hero_face
 
 
 def test_chamfered_shell_builds_without_error():
@@ -175,3 +175,43 @@ def test_page3_builds_with_armor_panels():
     assert bb.xlen > 380, f"Expected xlen > 380, got {bb.xlen:.1f}"
     assert bb.ylen > 250, f"Expected ylen > 250, got {bb.ylen:.1f}"
     assert bb.zlen > 35, f"Expected zlen > 35, got {bb.zlen:.1f}"
+
+
+def test_hero_face_builds_without_error():
+    """Hero face should build on a standard shell without errors."""
+    shell = build_sculpted_shell(200, 150, 60)
+    result = build_hero_face(shell, 200, 150, 60)
+    assert result is not None
+
+
+def test_hero_face_adds_material():
+    """Hero face should add net material (raised logo plate protrudes 3mm)."""
+    shell = build_sculpted_shell(200, 150, 60)
+    vol_before = shell.val().Volume()
+    result = build_hero_face(shell, 200, 150, 60)
+    vol_after = result.val().Volume()
+    assert vol_after > vol_before, (
+        f"Hero face should add net material: before={vol_before:.0f}, after={vol_after:.0f}"
+    )
+
+
+def test_hero_face_extends_front():
+    """Hero face logo plate should extend the +Y bounding box by ~3mm."""
+    shell = build_sculpted_shell(200, 150, 60)
+    bb_before = shell.val().BoundingBox()
+    result = build_hero_face(shell, 200, 150, 60)
+    bb_after = result.val().BoundingBox()
+    extension = bb_after.ymax - bb_before.ymax
+    assert extension > 2.0, f"Logo plate should extend +Y by ~3mm, got {extension:.1f}"
+    assert extension < 5.0, f"Logo plate should not extend +Y by more than 5mm, got {extension:.1f}"
+
+
+def test_hero_face_has_hex_grid():
+    """Hero face should have significantly more faces than a plain shell (hex grid adds geometry)."""
+    shell = build_sculpted_shell(200, 150, 60)
+    faces_before = len(shell.val().Faces())
+    result = build_hero_face(shell, 200, 150, 60)
+    faces_after = len(result.val().Faces())
+    assert faces_after > faces_before + 20, (
+        f"Hex grid should add many faces: before={faces_before}, after={faces_after}"
+    )
