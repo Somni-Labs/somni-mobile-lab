@@ -100,7 +100,7 @@ CHARGER_H = 30
 
 # --- Page depths (usable internal depth for foam + device) ---
 PAGE1_DEPTH = STARLINK_PSU_H + FOAM_BASE + FOAM_TOP  # ~59mm (PSU is tallest at 51mm)
-PAGE2_DEPTH = LAPTOP_H + IPAD_H + FOAM_BASE + FOAM_TOP + 3  # ~36mm (stacked laptop+iPad+divider)
+PAGE2_DEPTH = FOAM_BASE + MONITOR_H + 2 + LAPTOP_H + IPAD_H + FOAM_TOP  # ~50mm (two-tier: monitor shelf over laptop+iPad stack)
 PAGE3_DEPTH = MOUSE_H + FOAM_BASE + FOAM_TOP           # ~48mm (mouse is tallest at 40mm)
 
 # --- Internal case dimensions (driven by largest items) ---
@@ -190,3 +190,29 @@ _bat_cx = _right_col_left + _bat_pocket_w / 2
 _bat_cy = _psu_cy - STARLINK_PSU_D / 2 - DIVIDER - _bat_pocket_d / 2
 page1 = cut_pocket(page1, _bat_cx, _bat_cy,
     _bat_pocket_w, _bat_pocket_d, BATTERY_H + FOAM_BASE, floor_z=WALL, corner_r=2)
+
+
+# =============================================================================
+# PAGE 2 — MIDDLE (Screens & Compute)
+# =============================================================================
+# Two-tier pocket layout: shallow monitor pocket over deeper laptop+iPad sub-pocket.
+# The monitor rests on a foam shelf formed by the larger pocket perimeter.
+_p2_h = PAGE2_DEPTH + WALL
+
+page2 = build_page_shell(CASE_OUTER_W, CASE_OUTER_D, _p2_h)
+
+# Tier 1: 17" Portable Monitor pocket (full page, shallow)
+_mon_cx = 0
+_mon_cy = 0
+_mon_pocket_h = FOAM_BASE + MONITOR_H  # 20mm from floor
+page2 = cut_pocket(page2, _mon_cx, _mon_cy,
+    MONITOR_W, MONITOR_D, _mon_pocket_h, floor_z=WALL, corner_r=3)
+
+# Tier 2: Framework Laptop + iPad stacked sub-pocket (centered within monitor pocket, deeper)
+_stack_w = max(LAPTOP_W, IPAD_W)   # 289mm
+_stack_d = max(LAPTOP_D, IPAD_D)   # 217mm
+_stack_h = FOAM_BASE + MONITOR_H + 2 + LAPTOP_H + IPAD_H  # 47mm from floor
+_stack_cx = 0
+_stack_cy = 0
+page2 = cut_pocket(page2, _stack_cx, _stack_cy,
+    _stack_w, _stack_d, _stack_h, floor_z=WALL, corner_r=3)
