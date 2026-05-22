@@ -12,6 +12,12 @@ from designs.common.constants import (
     M3_CLEARANCE_DIA,
 )
 
+try:
+    from cq_server.ui import ui, show_object
+    _cq_server = True
+except ImportError:
+    _cq_server = False
+
 
 def build_tilt_servo_mount():
     """
@@ -76,15 +82,11 @@ def build_linkage_arm(length=40, width=10, thickness=5, hole_dia=3):
     return arm
 
 
-# --- Standalone preview ---
-if not os.environ.get('_CQ_ASSEMBLY'):
-    try:
-        from cq_server.ui import ui, show_object
-        mount = build_tilt_servo_mount()
-        show_object(mount, name="Tilt Servo Mount",
-                    options={"color": (0.4, 0.4, 0.5, 0.9)})
-        arm = build_linkage_arm().translate((0, 40, 0))
-        show_object(arm, name="Tilt Linkage Arm",
-                    options={"color": (0.6, 0.4, 0.3, 0.9)})
-    except ImportError:
-        pass
+# --- Standalone preview for cadquery-server ---
+if _cq_server and not os.environ.get('_CQ_ASSEMBLY'):
+    mount = build_tilt_servo_mount()
+    show_object(mount, name="Tilt Servo Mount",
+                options={"color": (0.4, 0.4, 0.5, 0.9)})
+    arm = build_linkage_arm().translate((0, 40, 0))
+    show_object(arm, name="Tilt Linkage Arm",
+                options={"color": (0.6, 0.4, 0.3, 0.9)})

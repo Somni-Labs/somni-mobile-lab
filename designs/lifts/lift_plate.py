@@ -16,6 +16,12 @@ from designs.common.constants import (
     LIFT_SLOT_W,
 )
 
+try:
+    from cq_server.ui import ui, show_object
+    _cq_server = True
+except ImportError:
+    _cq_server = False
+
 
 def build_lift_plate(device_w, device_d, plate_thick=2, tab_w=None, tab_h=None):
     """
@@ -72,18 +78,14 @@ def build_keyboard_lift_plate():
     return build_lift_plate(KB_W, KB_D)
 
 
-# --- Standalone preview ---
-if not os.environ.get('_CQ_ASSEMBLY'):
-    try:
-        from cq_server.ui import ui, show_object
-        lp = build_laptop_lift_plate()
-        show_object(lp, name="Laptop Lift Plate",
-                    options={"color": (0.6, 0.6, 0.8, 0.8)})
-        mp = build_monitor_lift_plate().translate((0, 0, 30))
-        show_object(mp, name="Monitor Lift Plate",
-                    options={"color": (0.6, 0.8, 0.6, 0.8)})
-        kp = build_keyboard_lift_plate().translate((0, 0, 60))
-        show_object(kp, name="Keyboard Lift Plate",
-                    options={"color": (0.8, 0.6, 0.6, 0.8)})
-    except ImportError:
-        pass
+# --- Standalone preview for cadquery-server ---
+if _cq_server and not os.environ.get('_CQ_ASSEMBLY'):
+    lp = build_laptop_lift_plate()
+    show_object(lp, name="Laptop Lift Plate",
+                options={"color": (0.6, 0.6, 0.8, 0.8)})
+    mp = build_monitor_lift_plate().translate((0, 0, 30))
+    show_object(mp, name="Monitor Lift Plate",
+                options={"color": (0.6, 0.8, 0.6, 0.8)})
+    kp = build_keyboard_lift_plate().translate((0, 0, 60))
+    show_object(kp, name="Keyboard Lift Plate",
+                options={"color": (0.8, 0.6, 0.6, 0.8)})

@@ -16,6 +16,12 @@ from designs.common.constants import (
     HINGE_KNUCKLE_OD,
 )
 
+try:
+    from cq_server.ui import ui, show_object
+    _cq_server = True
+except ImportError:
+    _cq_server = False
+
 
 def build_servo_mount():
     """
@@ -116,15 +122,11 @@ def build_spur_gear(n_teeth=12, module_mm=1.5, thickness=8, bore_dia=6):
     return gear
 
 
-# --- Standalone preview ---
-if not os.environ.get('_CQ_ASSEMBLY'):
-    try:
-        from cq_server.ui import ui, show_object
-        mount = build_servo_mount()
-        show_object(mount, name="Hinge Servo Mount (MG996R)",
-                    options={"color": (0.4, 0.4, 0.4, 0.9)})
-        gear = build_spur_gear().translate((60, 0, 0))
-        show_object(gear, name="Spur Gear",
-                    options={"color": (0.6, 0.6, 0.3, 0.9)})
-    except ImportError:
-        pass
+# --- Standalone preview for cadquery-server ---
+if _cq_server and not os.environ.get('_CQ_ASSEMBLY'):
+    mount = build_servo_mount()
+    show_object(mount, name="Hinge Servo Mount (MG996R)",
+                options={"color": (0.4, 0.4, 0.4, 0.9)})
+    gear = build_spur_gear().translate((60, 0, 0))
+    show_object(gear, name="Spur Gear",
+                options={"color": (0.6, 0.6, 0.3, 0.9)})

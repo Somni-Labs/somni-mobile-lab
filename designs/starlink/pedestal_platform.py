@@ -14,6 +14,12 @@ from designs.common.constants import (
     HINGE_TUBE_OD,
 )
 
+try:
+    from cq_server.ui import ui, show_object
+    _cq_server = True
+except ImportError:
+    _cq_server = False
+
 
 def build_pedestal_platform():
     """
@@ -79,12 +85,8 @@ def build_pedestal_platform():
     return platform
 
 
-# --- Standalone preview ---
-if not os.environ.get('_CQ_ASSEMBLY'):
-    try:
-        from cq_server.ui import ui, show_object
-        platform = build_pedestal_platform()
-        show_object(platform, name="Pedestal Platform",
-                    options={"color": (0.3, 0.5, 0.7, 0.9)})
-    except ImportError:
-        pass
+# --- Standalone preview for cadquery-server ---
+if _cq_server and not os.environ.get('_CQ_ASSEMBLY'):
+    platform = build_pedestal_platform()
+    show_object(platform, name="Pedestal Platform",
+                options={"color": (0.3, 0.5, 0.7, 0.9)})

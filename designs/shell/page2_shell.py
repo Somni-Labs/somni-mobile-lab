@@ -35,6 +35,12 @@ from designs.common.mounting import (
     add_ridge, cut_led_channel,
 )
 
+try:
+    from cq_server.ui import ui, show_object
+    _cq_server = True
+except ImportError:
+    _cq_server = False
+
 
 def build_carry_handle():
     """Build the ergonomic U-shaped carry handle for the spine."""
@@ -120,11 +126,7 @@ def build_page2():
 
 
 # --- Standalone preview for cadquery-server ---
-if not os.environ.get('_CQ_ASSEMBLY'):
-    try:
-        from cq_server.ui import ui, show_object
-        page2 = build_page2()
-        show_object(page2, name="Page 2 - Middle (Screens)",
-                    options={"color": (0.56, 0.74, 0.56, 0.7)})
-    except ImportError:
-        pass
+if _cq_server and not os.environ.get('_CQ_ASSEMBLY'):
+    page2 = build_page2()
+    show_object(page2, name="Page 2 - Middle (Screens)",
+                options={"color": (0.56, 0.74, 0.56, 0.7)})

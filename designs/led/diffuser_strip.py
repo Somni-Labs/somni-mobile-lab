@@ -12,6 +12,12 @@ from designs.common.constants import (
     LED_CHANNEL_W, LED_CHANNEL_D, LED_DIFFUSER_SNAP,
 )
 
+try:
+    from cq_server.ui import ui, show_object
+    _cq_server = True
+except ImportError:
+    _cq_server = False
+
 
 def build_diffuser_strip(length, channel_w=LED_CHANNEL_W,
                          channel_d=LED_CHANNEL_D,
@@ -44,12 +50,8 @@ def build_diffuser_strip(length, channel_w=LED_CHANNEL_W,
     return strip
 
 
-# --- Standalone preview ---
-if not os.environ.get('_CQ_ASSEMBLY'):
-    try:
-        from cq_server.ui import ui, show_object
-        sample = build_diffuser_strip(100)
-        show_object(sample, name="Diffuser Strip (100mm sample)",
-                    options={"color": (0.9, 0.9, 0.95, 0.5)})
-    except ImportError:
-        pass
+# --- Standalone preview for cadquery-server ---
+if _cq_server and not os.environ.get('_CQ_ASSEMBLY'):
+    sample = build_diffuser_strip(100)
+    show_object(sample, name="Diffuser Strip (100mm sample)",
+                options={"color": (0.9, 0.9, 0.95, 0.5)})

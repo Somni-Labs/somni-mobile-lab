@@ -14,6 +14,12 @@ from designs.common.constants import (
     M3_CLEARANCE_DIA,
 )
 
+try:
+    from cq_server.ui import ui, show_object
+    _cq_server = True
+except ImportError:
+    _cq_server = False
+
 
 def build_electronics_bay():
     """Build the electronics bay box (without lid)."""
@@ -120,15 +126,11 @@ def build_electronics_bay_lid():
     return lid
 
 
-# --- Standalone preview ---
-if not os.environ.get('_CQ_ASSEMBLY'):
-    try:
-        from cq_server.ui import ui, show_object
-        bay = build_electronics_bay()
-        show_object(bay, name="Electronics Bay",
-                    options={"color": (0.3, 0.3, 0.3, 0.9)})
-        lid = build_electronics_bay_lid().translate((0, 0, EBAY_INNER_H + EBAY_WALL + 5))
-        show_object(lid, name="Bay Lid",
-                    options={"color": (0.5, 0.5, 0.5, 0.8)})
-    except ImportError:
-        pass
+# --- Standalone preview for cadquery-server ---
+if _cq_server and not os.environ.get('_CQ_ASSEMBLY'):
+    bay = build_electronics_bay()
+    show_object(bay, name="Electronics Bay",
+                options={"color": (0.3, 0.3, 0.3, 0.9)})
+    lid = build_electronics_bay_lid().translate((0, 0, EBAY_INNER_H + EBAY_WALL + 5))
+    show_object(lid, name="Bay Lid",
+                options={"color": (0.5, 0.5, 0.5, 0.8)})

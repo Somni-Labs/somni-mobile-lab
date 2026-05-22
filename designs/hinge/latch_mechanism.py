@@ -23,6 +23,12 @@ from designs.common.constants import (
     M3_INSERT_DIA, M3_INSERT_DEPTH,
 )
 
+try:
+    from cq_server.ui import ui, show_object
+    _cq_server = True
+except ImportError:
+    _cq_server = False
+
 
 def build_latch_housing():
     """
@@ -138,18 +144,14 @@ def build_latch_catch():
     return catch
 
 
-# --- Standalone preview ---
-if not os.environ.get('_CQ_ASSEMBLY'):
-    try:
-        from cq_server.ui import ui, show_object
-        housing = build_latch_housing()
-        show_object(housing, name="Latch Housing",
-                    options={"color": (0.4, 0.4, 0.4, 0.9)})
-        hook = build_latch_hook().translate((0, 30, 0))
-        show_object(hook, name="Latch Hook",
-                    options={"color": (0.8, 0.3, 0.3, 0.9)})
-        catch = build_latch_catch().translate((0, 60, 0))
-        show_object(catch, name="Latch Catch",
-                    options={"color": (0.3, 0.3, 0.8, 0.9)})
-    except ImportError:
-        pass
+# --- Standalone preview for cadquery-server ---
+if _cq_server and not os.environ.get('_CQ_ASSEMBLY'):
+    housing = build_latch_housing()
+    show_object(housing, name="Latch Housing",
+                options={"color": (0.4, 0.4, 0.4, 0.9)})
+    hook = build_latch_hook().translate((0, 30, 0))
+    show_object(hook, name="Latch Hook",
+                options={"color": (0.8, 0.3, 0.3, 0.9)})
+    catch = build_latch_catch().translate((0, 60, 0))
+    show_object(catch, name="Latch Catch",
+                options={"color": (0.3, 0.3, 0.8, 0.9)})

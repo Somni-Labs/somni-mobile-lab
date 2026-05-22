@@ -18,6 +18,12 @@ from designs.common.constants import (
     TOL,
 )
 
+try:
+    from cq_server.ui import ui, show_object
+    _cq_server = True
+except ImportError:
+    _cq_server = False
+
 
 def build_pedestal_base():
     """
@@ -92,12 +98,8 @@ def build_pedestal_base():
     return plate
 
 
-# --- Standalone preview ---
-if not os.environ.get('_CQ_ASSEMBLY'):
-    try:
-        from cq_server.ui import ui, show_object
-        base = build_pedestal_base()
-        show_object(base, name="Pedestal Base",
-                    options={"color": (0.3, 0.3, 0.6, 0.9)})
-    except ImportError:
-        pass
+# --- Standalone preview for cadquery-server ---
+if _cq_server and not os.environ.get('_CQ_ASSEMBLY'):
+    base = build_pedestal_base()
+    show_object(base, name="Pedestal Base",
+                options={"color": (0.3, 0.3, 0.6, 0.9)})

@@ -9,6 +9,12 @@ import os
 import cadquery as cq
 from designs.common.constants import BUTTON_DIA, BUTTON_RECESS, WALL
 
+try:
+    from cq_server.ui import ui, show_object
+    _cq_server = True
+except ImportError:
+    _cq_server = False
+
 
 def build_button_mount():
     """
@@ -41,12 +47,8 @@ def build_button_mount():
     return housing
 
 
-# --- Standalone preview ---
-if not os.environ.get('_CQ_ASSEMBLY'):
-    try:
-        from cq_server.ui import ui, show_object
-        btn = build_button_mount()
-        show_object(btn, name="Button Mount",
-                    options={"color": (0.2, 0.2, 0.2, 0.9)})
-    except ImportError:
-        pass
+# --- Standalone preview for cadquery-server ---
+if _cq_server and not os.environ.get('_CQ_ASSEMBLY'):
+    btn = build_button_mount()
+    show_object(btn, name="Button Mount",
+                options={"color": (0.2, 0.2, 0.2, 0.9)})

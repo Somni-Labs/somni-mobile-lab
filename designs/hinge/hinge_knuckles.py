@@ -18,6 +18,12 @@ from designs.common.constants import (
     CASE_OUTER_W, CASE_OUTER_D,
 )
 
+try:
+    from cq_server.ui import ui, show_object
+    _cq_server = True
+except ImportError:
+    _cq_server = False
+
 
 def build_hinge_knuckles(page_height, case_depth=CASE_OUTER_D,
                          case_outer_w=CASE_OUTER_W, parity="even",
@@ -138,15 +144,11 @@ def build_retaining_clip():
     return clip
 
 
-# --- Standalone preview ---
-if not os.environ.get('_CQ_ASSEMBLY'):
-    try:
-        from cq_server.ui import ui, show_object
-        knuckles = build_hinge_knuckles(50, gear_sector_index=2)
-        show_object(knuckles, name="Hinge Knuckles (sample)",
-                    options={"color": (0.5, 0.5, 0.5, 0.9)})
-        clip = build_retaining_clip()
-        show_object(clip.translate((0, 0, 60)), name="Retaining C-Clip",
-                    options={"color": (0.7, 0.7, 0.7, 0.9)})
-    except ImportError:
-        pass
+# --- Standalone preview for cadquery-server ---
+if _cq_server and not os.environ.get('_CQ_ASSEMBLY'):
+    knuckles = build_hinge_knuckles(50, gear_sector_index=2)
+    show_object(knuckles, name="Hinge Knuckles (sample)",
+                options={"color": (0.5, 0.5, 0.5, 0.9)})
+    clip = build_retaining_clip()
+    show_object(clip.translate((0, 0, 60)), name="Retaining C-Clip",
+                options={"color": (0.7, 0.7, 0.7, 0.9)})

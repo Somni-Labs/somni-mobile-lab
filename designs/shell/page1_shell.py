@@ -35,6 +35,12 @@ from designs.common.mounting import (
     cut_led_channel,
 )
 
+try:
+    from cq_server.ui import ui, show_object
+    _cq_server = True
+except ImportError:
+    _cq_server = False
+
 
 def build_page1():
     """Build the complete Page 1 shell with pockets and mounting features."""
@@ -116,11 +122,7 @@ def build_page1():
 
 
 # --- Standalone preview for cadquery-server ---
-if not os.environ.get('_CQ_ASSEMBLY'):
-    try:
-        from cq_server.ui import ui, show_object
-        page1 = build_page1()
-        show_object(page1, name="Page 1 - Bottom (Power)",
-                    options={"color": (0.27, 0.51, 0.71, 0.7)})
-    except ImportError:
-        pass
+if _cq_server and not os.environ.get('_CQ_ASSEMBLY'):
+    page1 = build_page1()
+    show_object(page1, name="Page 1 - Bottom (Power)",
+                options={"color": (0.27, 0.51, 0.71, 0.7)})

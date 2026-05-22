@@ -18,6 +18,12 @@ from designs.common.constants import (
     M3_CLEARANCE_DIA,
 )
 
+try:
+    from cq_server.ui import ui, show_object
+    _cq_server = True
+except ImportError:
+    _cq_server = False
+
 
 def build_cam(cam_od=CAM_OD, eccentricity=CAM_ECCENTRICITY,
               thickness=CAM_THICKNESS):
@@ -99,15 +105,11 @@ def build_cam_housing(slot_w=LIFT_SLOT_W):
     return housing
 
 
-# --- Standalone preview ---
-if not os.environ.get('_CQ_ASSEMBLY'):
-    try:
-        from cq_server.ui import ui, show_object
-        cam = build_cam()
-        show_object(cam, name="Eccentric Cam",
-                    options={"color": (0.7, 0.5, 0.2, 0.9)})
-        housing = build_cam_housing().translate((0, 50, 0))
-        show_object(housing, name="Cam Housing",
-                    options={"color": (0.4, 0.4, 0.4, 0.8)})
-    except ImportError:
-        pass
+# --- Standalone preview for cadquery-server ---
+if _cq_server and not os.environ.get('_CQ_ASSEMBLY'):
+    cam = build_cam()
+    show_object(cam, name="Eccentric Cam",
+                options={"color": (0.7, 0.5, 0.2, 0.9)})
+    housing = build_cam_housing().translate((0, 50, 0))
+    show_object(housing, name="Cam Housing",
+                options={"color": (0.4, 0.4, 0.4, 0.8)})

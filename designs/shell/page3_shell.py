@@ -39,6 +39,12 @@ from designs.common.mounting import (
     add_ridge, cut_led_channel,
 )
 
+try:
+    from cq_server.ui import ui, show_object
+    _cq_server = True
+except ImportError:
+    _cq_server = False
+
 
 def build_page3():
     """Build the complete Page 3 shell with pockets, ridges, LEDs, and mounts."""
@@ -161,11 +167,7 @@ def build_page3():
 
 
 # --- Standalone preview for cadquery-server ---
-if not os.environ.get('_CQ_ASSEMBLY'):
-    try:
-        from cq_server.ui import ui, show_object
-        page3 = build_page3()
-        show_object(page3, name="Page 3 - Top (Accessories)",
-                    options={"color": (1.0, 0.63, 0.48, 0.7)})
-    except ImportError:
-        pass
+if _cq_server and not os.environ.get('_CQ_ASSEMBLY'):
+    page3 = build_page3()
+    show_object(page3, name="Page 3 - Top (Accessories)",
+                options={"color": (1.0, 0.63, 0.48, 0.7)})
