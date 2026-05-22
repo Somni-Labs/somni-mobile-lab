@@ -540,17 +540,4 @@ _p3_assembly_z = _p2_assembly_z + _p2_h + 2
 page3_view = page3.translate((0, 0, _p3_assembly_z))
 show_object(page3_view, name="Page 3 - Top (Accessories)", options={"color": "lightsalmon", "alpha": 0.7})
 
-# Show tiles exploded to the side for print preview
-_tile_offset_y = CASE_OUTER_D + 50
-show_object(page1_left.translate((0, _tile_offset_y, 0)),
-    name="P1 Left Tile", options={"color": "steelblue", "alpha": 0.5})
-show_object(page1_right.translate((0, _tile_offset_y * 2, 0)),
-    name="P1 Right Tile", options={"color": "steelblue", "alpha": 0.5})
-show_object(page2_left.translate((0, _tile_offset_y, _p2_assembly_z)),
-    name="P2 Left Tile", options={"color": "darkseagreen", "alpha": 0.5})
-show_object(page2_right.translate((0, _tile_offset_y * 2, _p2_assembly_z)),
-    name="P2 Right Tile", options={"color": "darkseagreen", "alpha": 0.5})
-show_object(page3_left.translate((0, _tile_offset_y, _p3_assembly_z)),
-    name="P3 Left Tile", options={"color": "lightsalmon", "alpha": 0.5})
-show_object(page3_right.translate((0, _tile_offset_y * 2, _p3_assembly_z)),
-    name="P3 Right Tile", options={"color": "lightsalmon", "alpha": 0.5})
+# Tile variables exported for export script (page1_left, page1_right, etc.)
