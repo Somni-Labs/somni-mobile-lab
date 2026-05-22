@@ -67,7 +67,6 @@ def build_page1():
         floor_z=WALL, corner_r=2)
 
     # --- Mounting bosses: Starlink pedestal (4x in floor, around Starlink pocket) ---
-    boss_h = WALL  # bosses sit on the floor, extend up to wall height
     pedestal_inset = 15  # inset from pocket edges
     for dx, dy in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
         bx = starlink_cx + dx * (STARLINK_W / 2 - pedestal_inset)
@@ -104,8 +103,8 @@ def build_page1():
 
     # --- LED channel along inner rim (top face perimeter) ---
     rim_z = PAGE1_H
-    hw = CASE_OUTER_W / 2 - WALL - 2  # inset from wall
-    hd = CASE_OUTER_D / 2 - WALL - 2
+    hw = CASE_OUTER_W / 2 - WALL - 2  # 2mm clearance from inner wall to LED strip
+    hd = CASE_OUTER_D / 2 - WALL - 2  # same inset on depth axis
     # Four sides of the rim
     shell = cut_led_channel(shell, -hw, -hd, hw, -hd, rim_z)   # front
     shell = cut_led_channel(shell, hw, -hd, hw, hd, rim_z)     # right
