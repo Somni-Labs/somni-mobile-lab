@@ -116,8 +116,8 @@ def add_structural_ribs(body, width, depth, height, chamfer=CHAMFER_SIZE,
     """
     hw = width / 2
     hd = depth / 2
-    z_lo = chamfer + 2
-    z_hi = height - chamfer - 2
+    z_lo = chamfer
+    z_hi = height - chamfer
     rib_z_height = z_hi - z_lo
     if rib_z_height < 5:
         return body
@@ -235,14 +235,19 @@ def build_hero_face(body, width, depth, height, wall=WALL, chamfer=CHAMFER_SIZE,
     hd = depth / 2
     face_y = hd  # outer surface of front wall
 
-    # Usable Z range on the front face (between chamfer zones)
-    z_lo = chamfer + 2
-    z_hi = height - chamfer - 2
+    # Usable Z range on the front face (between chamfer zones).
+    # The chamfer itself defines the safe boundary — no extra margin needed
+    # because the logo plate protrudes OUTWARD from the flat wall surface.
+    z_lo = chamfer
+    z_hi = height - chamfer
     face_z_center = (z_lo + z_hi) / 2
     face_z_extent = z_hi - z_lo
 
-    # Clamp plate_h to available face height (leave margin for grid panels)
-    effective_plate_h = min(plate_h, face_z_extent * 0.6)
+    # Allocate 65% of available height to the logo plate (was 60%);
+    # the remaining 35% is split between upper/lower grid panels.
+    # On shorter pages, this means the logo plate dominates the face.
+    # On taller pages, grid panels get enough space to render.
+    effective_plate_h = min(plate_h, face_z_extent * 0.65)
 
     # NOTE: CadQuery's XZ workplane extrudes in the -Y direction.
     # To place geometry spanning [y_lo, y_hi], extrude (y_hi - y_lo)
@@ -279,30 +284,31 @@ def build_hero_face(body, width, depth, height, wall=WALL, chamfer=CHAMFER_SIZE,
     logo_extrude = plate_recess + logo_overlap + 0.01
     logo_translate_y = face_y + plate_proud + 0.01  # top of logo shape
 
-    # Main nameplate rectangle
+    # Main nameplate rectangle — scaled to 60% of plate width for prominence
+    nameplate_w = min(plate_w * 0.6, effective_plate_h * 4)
     nameplate = (
         cq.Workplane("XZ")
         .center(0, face_z_center)
-        .rect(80, min(16, effective_plate_h - 2))
+        .rect(nameplate_w, min(16, effective_plate_h * 0.5))
         .extrude(logo_extrude)
         .translate((0, logo_translate_y, 0))
     )
     body = body.union(nameplate)
 
-    # Accent bar below (clamped to within plate Z extent)
-    accent_z = max(face_z_center - 14,
+    # Accent bar below nameplate — thin horizontal stripe
+    accent_z = max(face_z_center - effective_plate_h * 0.35,
                    face_z_center - effective_plate_h / 2 + 2)
     accent_bar = (
         cq.Workplane("XZ")
         .center(0, accent_z)
-        .rect(min(100, plate_w - 4), 2.5)
+        .rect(min(plate_w * 0.8, plate_w - 4), 2.5)
         .extrude(logo_extrude)
         .translate((0, logo_translate_y, 0))
     )
     body = body.union(accent_bar)
 
-    # Flanking chevrons (clamped to plate width)
-    chevron_dx = min(55, plate_w / 2 - 5)
+    # Flanking chevrons (scaled to plate width)
+    chevron_dx = min(plate_w * 0.4, plate_w / 2 - 5)
     for dx in [-chevron_dx, chevron_dx]:
         chevron = (
             cq.Workplane("XZ")
@@ -316,20 +322,20 @@ def build_hero_face(body, width, depth, height, wall=WALL, chamfer=CHAMFER_SIZE,
     # --- 2. Grid panels (above and below logo plate) ---
     hex_panel_w = plate_w + 20  # slightly wider than logo plate
 
-    # Upper panel
-    upper_z_lo = face_z_center + effective_plate_h / 2 + groove_w + 1
+    # Upper panel: from just above the groove to the top chamfer line
+    upper_z_lo = face_z_center + effective_plate_h / 2 + groove_w + 0.5
     upper_z_hi = z_hi
     upper_h = upper_z_hi - upper_z_lo
     upper_cz = (upper_z_lo + upper_z_hi) / 2
 
-    # Lower panel
+    # Lower panel: from bottom chamfer line to just below the groove
     lower_z_lo = z_lo
-    lower_z_hi = face_z_center - effective_plate_h / 2 - groove_w - 1
+    lower_z_hi = face_z_center - effective_plate_h / 2 - groove_w - 0.5
     lower_h = lower_z_hi - lower_z_lo
     lower_cz = (lower_z_lo + lower_z_hi) / 2
 
     for panel_cz, panel_h in [(upper_cz, upper_h), (lower_cz, lower_h)]:
-        if panel_h < 10:
+        if panel_h < 5:
             continue
 
         # Cut the recessed panel into the front wall

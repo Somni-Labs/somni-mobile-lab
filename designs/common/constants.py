@@ -36,11 +36,11 @@ RIDGE_CHAMFER = 0.5    # 45-degree chamfer on ridge edges (half of 1mm)
 RIDGE_ACCENT_H = 1.5   # side accent ridge height (thinner)
 RIDGE_ACCENT_W = 3     # side accent ridge width
 # Hero face (front wall armor plate treatment)
-HERO_PLATE_W = 120     # raised logo plate width
+HERO_PLATE_W = 200     # raised logo plate width (was 120 — wider for visibility)
 HERO_PLATE_H = 50      # raised logo plate height (Z extent on front wall)
 HERO_PLATE_PROUD = 3   # how far logo plate protrudes from wall surface
 HERO_PLATE_RECESS = 1.5  # recess depth into the plate for logo background
-HEX_SIZE = 15          # hex pocket size across flats (mm)
+HEX_SIZE = 12          # hex pocket size across flats (mm) — smaller for better fill on short pages
 HEX_WALL = 2           # wall thickness between hex pockets (mm)
 HEX_PANEL_RECESS = 1.5 # how deep hex panel is recessed into wall
 HEX_POCKET_EXTRA = 0.5 # additional depth of hex pockets below panel surface
@@ -48,10 +48,10 @@ FRAME_GROOVE_W = 2     # groove width between armor zones
 FRAME_GROOVE_D = 1     # groove depth
 
 # Structural ribs (back + short sides only)
-STRUCT_RIB_W = 4       # structural rib width
-STRUCT_RIB_H = 3       # how far structural ribs protrude from wall
+STRUCT_RIB_W = 6       # structural rib width (bolder for visibility)
+STRUCT_RIB_H = 5       # how far structural ribs protrude from wall (was 3)
 STRUCT_RIB_BACK_N = 3  # number of ribs on back wall
-STRUCT_RIB_SIDE_N = 1  # number of ribs per short side
+STRUCT_RIB_SIDE_N = 2  # number of ribs per short side (was 1)
 RIDGE_DIAMOND = 3      # chamfered diamond size at ridge intersections
 
 # =============================================================================
