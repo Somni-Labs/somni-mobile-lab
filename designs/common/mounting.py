@@ -258,53 +258,48 @@ def cut_armor_panels(body, width, depth, height, spine_xs, lateral_ys,
                      groove_width=PANEL_GROOVE_WIDTH, ridge_w=RIDGE_W,
                      edge_inset=10):
     """
-    Cut recessed armor panel zones into the exterior bottom face of a page shell.
+    Cut groove lines along ridge edges to create the visual separation between
+    raised ridges and recessed armor panel zones on the shell's top face.
 
-    The exterior face is divided into a grid by spine ridges (at spine_xs along X)
-    and lateral ridges (at lateral_ys along Y). The panel zones between ridges
-    are recessed groove_depth into the shell from the exterior face (z=0).
+    The ridges (already added via add_ridge) are the high surface. This function
+    cuts narrow grooves alongside each ridge line to create a clean visual
+    transition — a shadow line that makes each ridge stand out from the
+    surrounding panel surface.
 
-    The ridges remain at the original surface height. Panels are cut below.
+    For a shell with 2mm ridges and 1.5mm groove depth, the visual effect is:
+    ridge surface → groove → panel surface, reading as armored plate segments.
+
+    The groove cuts extend slightly below the top face of the shell to ensure
+    they're visible even where the shell rim is thin.
     """
-    hw = width / 2
     hd = depth / 2
-    x_bounds = sorted([-hw + chamfer] + list(spine_xs) + [hw - chamfer])
-    y_bounds = sorted([-hd + chamfer] + list(lateral_ys) + [hd - chamfer])
-    half_rw = ridge_w / 2 + groove_width / 2
+    hw = width / 2
 
-    for i in range(len(x_bounds) - 1):
-        for j in range(len(y_bounds) - 1):
-            x_lo = x_bounds[i]
-            x_hi = x_bounds[i + 1]
-            y_lo = y_bounds[j]
-            y_hi = y_bounds[j + 1]
-
-            panel_x_lo = x_lo + half_rw if x_lo in spine_xs else x_lo + groove_width
-            panel_x_hi = x_hi - half_rw if x_hi in spine_xs else x_hi - groove_width
-            panel_y_lo = y_lo + half_rw if y_lo in lateral_ys else y_lo + groove_width
-            panel_y_hi = y_hi - half_rw if y_hi in lateral_ys else y_hi - groove_width
-
-            if panel_x_hi - panel_x_lo < 5 or panel_y_hi - panel_y_lo < 5:
-                continue
-
-            panel_cx = (panel_x_lo + panel_x_hi) / 2
-            panel_cy = (panel_y_lo + panel_y_hi) / 2
-            panel_w = panel_x_hi - panel_x_lo
-            panel_d = panel_y_hi - panel_y_lo
-
-            # Recess cuts from the exterior bottom face (z=0) upward by groove_depth.
-            recess = (
+    # Cut groove lines alongside spine ridges (running along Y)
+    for sx in spine_xs:
+        for side in [-1, 1]:
+            gx = sx + side * (ridge_w / 2 + groove_width / 2)
+            groove = (
                 cq.Workplane("XY")
-                .workplane(offset=-0.1)
-                .center(panel_cx, panel_cy)
-                .rect(panel_w, panel_d)
-                .extrude(groove_depth + 0.1)
+                .workplane(offset=height - groove_depth)
+                .center(gx, 0)
+                .rect(groove_width, depth - chamfer * 2 - edge_inset * 2)
+                .extrude(groove_depth + RIDGE_H + 0.1)
             )
-            try:
-                recess = recess.edges(">Z").chamfer(min(PANEL_BEVEL, groove_depth * 0.4))
-            except Exception:
-                pass
-            body = body.cut(recess)
+            body = body.cut(groove)
+
+    # Cut groove lines alongside lateral ridges (running along X)
+    for ly in lateral_ys:
+        for side in [-1, 1]:
+            gy = ly + side * (ridge_w / 2 + groove_width / 2)
+            groove = (
+                cq.Workplane("XY")
+                .workplane(offset=height - groove_depth)
+                .center(0, gy)
+                .rect(width - chamfer * 2 - edge_inset * 2, groove_width)
+                .extrude(groove_depth + RIDGE_H + 0.1)
+            )
+            body = body.cut(groove)
 
     return body
 

@@ -4,8 +4,8 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from designs.common.constants import WALL, CORNER_R, CHAMFER_SIZE, PANEL_GROOVE_DEPTH, LED_CHANNEL_W, LED_CHANNEL_D
-from designs.common.mounting import build_sculpted_shell, add_chamfer_led_channels, cut_armor_panels
+from designs.common.constants import WALL, CORNER_R, CHAMFER_SIZE, PANEL_GROOVE_DEPTH, LED_CHANNEL_W, LED_CHANNEL_D, RIDGE_H
+from designs.common.mounting import build_sculpted_shell, add_chamfer_led_channels, cut_armor_panels, add_ridge
 
 
 def test_chamfered_shell_builds_without_error():
@@ -73,21 +73,32 @@ def test_chamfer_led_channels_remove_material():
     assert vol_after < vol_before, "LED channels should remove material"
 
 
+def _build_shell_with_ridges(width=400, depth=270, height=50):
+    """Helper: build a shell with ridges on top face, simulating Page 3 setup."""
+    shell = build_sculpted_shell(width, depth, height)
+    hw = width / 2
+    hd = depth / 2
+    spine_xs = [-hw / 3, 0, hw / 3]
+    lateral_ys = [-hd / 3, hd / 3]
+    # Add ridges on top face (like Page 3 does before cutting panels)
+    for sx in spine_xs:
+        shell = add_ridge(shell, sx, -hd + 10, sx, hd - 10, z=height)
+    for ly in lateral_ys:
+        shell = add_ridge(shell, -hw + 10, ly, hw - 10, ly, z=height)
+    return shell, spine_xs, lateral_ys
+
+
 def test_armor_panels_build():
     """Cutting armor panels should not error."""
-    shell = build_sculpted_shell(400, 270, 50)
-    spine_xs = [-400 / 6, 0, 400 / 6]
-    lateral_ys = [-270 / 6, 270 / 6]
+    shell, spine_xs, lateral_ys = _build_shell_with_ridges()
     result = cut_armor_panels(shell, 400, 270, 50, spine_xs, lateral_ys)
     assert result is not None
 
 
 def test_armor_panels_remove_material():
-    """Armor panels should recess material from the top face."""
-    shell = build_sculpted_shell(400, 270, 50)
+    """Armor panels should recess material from the ridged top face."""
+    shell, spine_xs, lateral_ys = _build_shell_with_ridges()
     vol_before = shell.val().Volume()
-    spine_xs = [-400 / 6, 0, 400 / 6]
-    lateral_ys = [-270 / 6, 270 / 6]
     result = cut_armor_panels(shell, 400, 270, 50, spine_xs, lateral_ys)
     vol_after = result.val().Volume()
-    assert vol_after < vol_before, "Armor panels should remove material"
+    assert vol_after < vol_before, "Armor panels should remove material from ridged surface"
