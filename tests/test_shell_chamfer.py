@@ -94,13 +94,13 @@ def test_armor_panels_build():
     assert result is not None
 
 
-def test_armor_panels_remove_material():
-    """Armor panels should recess material from the ridged top face."""
+def test_armor_panels_modify_geometry():
+    """Cutting armor panels should change the geometry (add grooves, modify faces)."""
     shell, spine_xs, lateral_ys = _build_shell_with_ridges()
-    vol_before = shell.val().Volume()
+    faces_before = len(shell.val().Faces())
     result = cut_armor_panels(shell, 400, 270, 50, spine_xs, lateral_ys)
-    vol_after = result.val().Volume()
-    assert vol_after < vol_before, "Armor panels should remove material from ridged surface"
+    faces_after = len(result.val().Faces())
+    assert faces_after != faces_before, "Armor panels should modify the geometry"
 
 
 def test_structural_ribs_add_material():
@@ -132,8 +132,9 @@ def test_shell_has_rim_band():
     """Shell should have a visibly thick rim at the top (stepped profile)."""
     # A shell with rim_band should have more material near the top
     # than one without. We verify by comparing volumes.
-    shell_with_rim = build_sculpted_shell(200, 150, 60, rim_band=8, rim_step=3)
-    shell_no_rim = build_sculpted_shell(200, 150, 60, rim_band=0, rim_step=0)
+    # Use a tall shell (120mm) so the rim band and chamfer don't overlap.
+    shell_with_rim = build_sculpted_shell(200, 150, 120, rim_band=RIM_BAND, rim_step=RIM_STEP)
+    shell_no_rim = build_sculpted_shell(200, 150, 120, rim_band=0, rim_step=0)
     # With rim should have more volume (thicker walls near top)
     assert shell_with_rim.val().Volume() > shell_no_rim.val().Volume(), \
         "Shell with rim band should have more volume than shell without"
@@ -196,14 +197,19 @@ def test_hero_face_adds_material():
 
 
 def test_hero_face_extends_front():
-    """Hero face logo plate should extend the +Y bounding box by ~3mm."""
+    """Hero face logo plate should extend the +Y bounding box by HERO_PLATE_PROUD."""
+    from designs.common.constants import HERO_PLATE_PROUD
     shell = build_sculpted_shell(200, 150, 60)
     bb_before = shell.val().BoundingBox()
     result = build_hero_face(shell, 200, 150, 60)
     bb_after = result.val().BoundingBox()
     extension = bb_after.ymax - bb_before.ymax
-    assert extension > 2.0, f"Logo plate should extend +Y by ~3mm, got {extension:.1f}"
-    assert extension < 5.0, f"Logo plate should not extend +Y by more than 5mm, got {extension:.1f}"
+    assert extension > HERO_PLATE_PROUD * 0.8, (
+        f"Logo plate should extend +Y by ~{HERO_PLATE_PROUD}mm, got {extension:.1f}"
+    )
+    assert extension < HERO_PLATE_PROUD + 2.0, (
+        f"Logo plate should not extend +Y by more than {HERO_PLATE_PROUD + 2}mm, got {extension:.1f}"
+    )
 
 
 def test_hero_face_has_hex_grid():

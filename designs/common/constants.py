@@ -19,40 +19,40 @@ WALL = 3               # outer shell wall thickness
 DIVIDER = 2            # internal divider wall thickness
 CORNER_R = 15          # outer corner fillet radius (organic, up from 5mm in V1)
 TAPER = 3              # shell taper per side (thicker center, thinner edges)
-CHAMFER_SIZE = 10      # 45-degree edge chamfer dimension (mm)
-RIM_BAND = 8           # solid rim band depth at top (mm) — makes chamfer visible
-RIM_STEP = 3           # inward step of inner cavity below rim (mm)
+CHAMFER_SIZE = 18      # 45-degree edge chamfer (dramatic bevel on 412mm case)
+RIM_BAND = 12          # solid rim band at top — thick enough for chamfer to read
+RIM_STEP = 5           # inward step below rim (layered armor look)
 SIDE_TAPER_ANGLE = 3   # degrees of inward taper on side walls (0=vertical)
 PANEL_GROOVE_DEPTH = 1.5  # armor panel recess below ridge surface
-PANEL_GROOVE_WIDTH = 2    # groove cut width between panels
+PANEL_GROOVE_WIDTH = 3    # groove cut width between panels (wider for visibility)
 PANEL_BEVEL = 1           # bevel transition at groove edges
 
 # =============================================================================
 # EXOSUIT RIDGES
 # =============================================================================
-RIDGE_H = 2            # ridge height above shell surface (proud)
-RIDGE_W = 4            # ridge width
-RIDGE_CHAMFER = 0.5    # 45-degree chamfer on ridge edges (half of 1mm)
-RIDGE_ACCENT_H = 1.5   # side accent ridge height (thinner)
-RIDGE_ACCENT_W = 3     # side accent ridge width
+RIDGE_H = 4            # ridge height above shell surface (bold, was 2)
+RIDGE_W = 6            # ridge width (was 4)
+RIDGE_CHAMFER = 1.0    # 45-degree chamfer on ridge edges
+RIDGE_ACCENT_H = 2.5   # side accent ridge height
+RIDGE_ACCENT_W = 4     # side accent ridge width
 # Hero face (front wall armor plate treatment)
-HERO_PLATE_W = 200     # raised logo plate width (was 120 — wider for visibility)
+HERO_PLATE_W = 280     # raised logo plate width — 68% of 412mm case face
 HERO_PLATE_H = 50      # raised logo plate height (Z extent on front wall)
-HERO_PLATE_PROUD = 3   # how far logo plate protrudes from wall surface
-HERO_PLATE_RECESS = 1.5  # recess depth into the plate for logo background
-HEX_SIZE = 12          # hex pocket size across flats (mm) — smaller for better fill on short pages
-HEX_WALL = 2           # wall thickness between hex pockets (mm)
-HEX_PANEL_RECESS = 1.5 # how deep hex panel is recessed into wall
-HEX_POCKET_EXTRA = 0.5 # additional depth of hex pockets below panel surface
-FRAME_GROOVE_W = 2     # groove width between armor zones
-FRAME_GROOVE_D = 1     # groove depth
+HERO_PLATE_PROUD = 8   # how far logo plate protrudes (was 3 — invisible at scale)
+HERO_PLATE_RECESS = 3  # recess depth into the plate for logo background
+HEX_SIZE = 12          # hex pocket size across flats (mm)
+HEX_WALL = 2.5         # wall thickness between hex pockets
+HEX_PANEL_RECESS = 3   # how deep hex panel is recessed into wall (was 1.5)
+HEX_POCKET_EXTRA = 1.5 # additional depth of hex pockets below panel surface
+FRAME_GROOVE_W = 3     # groove width between armor zones (was 2)
+FRAME_GROOVE_D = 2     # groove depth (was 1)
 
 # Structural ribs (back + short sides only)
-STRUCT_RIB_W = 6       # structural rib width (bolder for visibility)
-STRUCT_RIB_H = 5       # how far structural ribs protrude from wall (was 3)
-STRUCT_RIB_BACK_N = 3  # number of ribs on back wall
-STRUCT_RIB_SIDE_N = 2  # number of ribs per short side (was 1)
-RIDGE_DIAMOND = 3      # chamfered diamond size at ridge intersections
+STRUCT_RIB_W = 8       # structural rib width (bold greeble)
+STRUCT_RIB_H = 10      # how far structural ribs protrude from wall (was 5)
+STRUCT_RIB_BACK_N = 5  # number of ribs on back wall (was 3)
+STRUCT_RIB_SIDE_N = 3  # number of ribs per short side (was 2)
+RIDGE_DIAMOND = 5      # chamfered diamond size at ridge intersections
 
 # =============================================================================
 # LED CHANNELS
