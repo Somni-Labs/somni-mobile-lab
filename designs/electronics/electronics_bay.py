@@ -7,7 +7,15 @@ Removable lid with M2 screws. USB-C port cutout on one end.
 """
 
 import os
+import sys
 import cadquery as cq
+
+# Bootstrap sys.path for cadquery-server symlink loading
+_this_dir = os.path.dirname(os.path.realpath(__file__))
+_repo_root = os.path.abspath(os.path.join(_this_dir, "..", ".."))
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
+
 from designs.common.constants import (
     EBAY_INNER_W, EBAY_INNER_D, EBAY_INNER_H, EBAY_WALL,
     EBAY_LID_SCREW,

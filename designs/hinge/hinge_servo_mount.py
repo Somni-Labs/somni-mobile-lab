@@ -6,8 +6,16 @@ Includes a spur gear that meshes with the gear sector on the hinge knuckle.
 """
 
 import os
+import sys
 import cadquery as cq
 import math
+
+# Bootstrap sys.path for cadquery-server symlink loading
+_this_dir = os.path.dirname(os.path.realpath(__file__))
+_repo_root = os.path.abspath(os.path.join(_this_dir, "..", ".."))
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
+
 from designs.common.constants import (
     MG996R_W, MG996R_D, MG996R_H, MG996R_FLANGE_W, MG996R_FLANGE_H,
     MG996R_SHAFT_OFFSET,

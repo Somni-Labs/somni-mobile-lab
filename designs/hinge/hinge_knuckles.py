@@ -10,8 +10,16 @@ Returns a CadQuery solid — caller unions it onto the page shell.
 """
 
 import os
+import sys
 import cadquery as cq
 import math
+
+# Bootstrap sys.path for cadquery-server symlink loading
+_this_dir = os.path.dirname(os.path.realpath(__file__))
+_repo_root = os.path.abspath(os.path.join(_this_dir, "..", ".."))
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
+
 from designs.common.constants import (
     HINGE_KNUCKLE_OD, HINGE_KNUCKLE_LEN, HINGE_GAP,
     HINGE_TUBE_OD, HINGE_TUBE_ID,
