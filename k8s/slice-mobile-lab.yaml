@@ -1,0 +1,100 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: slice-mobile-lab
+  namespace: utilities
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      containers:
+      - name: slicer
+        image: cznewt/prusa-slicer:latest
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          set -e
+          echo "=== PrusaSlicer — Mobile Lab Case Tiles ==="
+
+          SLICER=/prusa-slicer/prusa-slicer
+          INI=/tmp/petg.ini
+          MOONRAKER="http://192.168.1.15:7125"
+
+          cat > "$INI" << 'PROFILE'
+          [print:PETG]
+          layer_height = 0.2
+          first_layer_height = 0.25
+          perimeters = 4
+          top_solid_layers = 5
+          bottom_solid_layers = 4
+          fill_density = 20%
+          fill_pattern = gyroid
+          external_perimeter_speed = 35
+          infill_speed = 50
+          travel_speed = 150
+          bridge_speed = 20
+          support_material = 0
+          skirts = 2
+          skirt_distance = 5
+          brim_width = 5
+
+          [filament:PETG]
+          temperature = 240
+          first_layer_temperature = 245
+          bed_temperature = 80
+          first_layer_bed_temperature = 85
+          fan_always_on = 1
+          min_fan_speed = 30
+          max_fan_speed = 50
+          bridge_fan_speed = 100
+
+          [printer:QIDI_Q2]
+          gcode_flavor = klipper
+          bed_shape = 0x0,275x0,275x295,0x295
+          max_print_height = 265
+          nozzle_diameter = 0.4
+          retract_length = 1.0
+          retract_speed = 35
+          retract_lift = 0.2
+          start_gcode = G28\nG1 Z5 F5000
+          end_gcode = END_PRINT
+          PROFILE
+
+          sed -i 's/^[[:space:]]*//' "$INI"
+
+          fix_temps() {
+            local FILE="$1"
+            echo "  Post-processing temps in $FILE"
+            sed -i 's/^M104 S200 ; set temperature/M140 S85 ; bed temp (first layer)\nM104 S245 ; extruder temp (first layer)/' "$FILE"
+            sed -i 's/^M109 S200 ; set temperature and wait for it to be reached/M190 S85 ; wait for bed temp\nM109 S245 ; wait for extruder temp (first layer)/' "$FILE"
+            sed -i '30,$ s/^M104 S200$/M104 S240 ; print temp/' "$FILE"
+          }
+
+          for TILE in /tmp/input/*.stl; do
+            BASENAME=$(basename "$TILE" .stl)
+            GCODE="/tmp/${BASENAME}.gcode"
+            echo "--- Slicing $BASENAME ---"
+            $SLICER --load "$INI" --center 137,147 \
+              --output "$GCODE" --export-gcode "$TILE"
+            fix_temps "$GCODE"
+            echo "--- Uploading $BASENAME ---"
+            curl -s -X DELETE "$MOONRAKER/server/files/gcodes/${BASENAME}.gcode" || true
+            sleep 2
+            curl -s -X POST "$MOONRAKER/server/files/upload" \
+              -F "file=@${GCODE};filename=${BASENAME}.gcode" \
+              -F "root=gcodes"
+            echo ""
+          done
+
+          echo "=== All tiles sliced and uploaded ==="
+        volumeMounts:
+        - name: stl-input
+          mountPath: /tmp/input
+      volumes:
+      - name: stl-input
+        configMap:
+          name: mobile-lab-stl-tiles
