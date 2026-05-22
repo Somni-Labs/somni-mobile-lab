@@ -26,7 +26,7 @@ if _repo_root not in sys.path:
     sys.path.insert(0, _repo_root)
 
 from designs.common.constants import (
-    WALL, DIVIDER, CORNER_R, TAPER,
+    WALL, DIVIDER, CORNER_R,
     CASE_OUTER_W, CASE_OUTER_D, CASE_INNER_W, CASE_INNER_D,
     PAGE2_H, PAGE2_DEPTH,
     MONITOR_W, MONITOR_D, MONITOR_H,
@@ -40,7 +40,7 @@ from designs.common.constants import (
 )
 from designs.common.mounting import (
     build_sculpted_shell, cut_pocket, add_mounting_boss,
-    add_ridge, cut_led_channel,
+    add_ridge, add_chamfer_led_channels,
 )
 
 try:
@@ -120,15 +120,15 @@ def build_page2():
     # Laptop lift: center of laptop sub-pocket floor
     shell = add_mounting_boss(shell, 0, -CASE_INNER_D / 4, z=0, height=WALL)
 
-    # --- Spine ridge LED channels (both outer faces) ---
-    # Two vertical ridges on the -X (spine) face, flanking the handle
+    # --- Spine ridge (structural/visual, flanking handle) ---
     spine_x = -CASE_OUTER_W / 2
     ridge_y1 = -CASE_OUTER_D / 3
     ridge_y2 = CASE_OUTER_D / 3
-
-    # Add ridges
     shell = add_ridge(shell, spine_x, ridge_y1, spine_x, ridge_y2,
                       z=PAGE2_H, ridge_w=RIDGE_W, ridge_h=RIDGE_H)
+
+    # --- LED channels on chamfer faces (top perimeter) ---
+    shell = add_chamfer_led_channels(shell, CASE_OUTER_W, CASE_OUTER_D, PAGE2_H)
 
     return shell
 

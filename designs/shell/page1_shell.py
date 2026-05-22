@@ -28,7 +28,7 @@ if _repo_root not in sys.path:
     sys.path.insert(0, _repo_root)
 
 from designs.common.constants import (
-    WALL, DIVIDER, CORNER_R, TAPER,
+    WALL, DIVIDER, CORNER_R,
     CASE_OUTER_W, CASE_OUTER_D, CASE_INNER_W, CASE_INNER_D,
     PAGE1_H, PAGE1_DEPTH,
     STARLINK_W, STARLINK_D, STARLINK_H,
@@ -40,7 +40,7 @@ from designs.common.constants import (
 )
 from designs.common.mounting import (
     build_sculpted_shell, cut_pocket, add_mounting_boss,
-    cut_led_channel,
+    add_chamfer_led_channels,
 )
 
 try:
@@ -116,15 +116,8 @@ def build_page1():
     )
     shell = shell.cut(cable_hole)
 
-    # --- LED channel along inner rim (top face perimeter) ---
-    rim_z = PAGE1_H
-    hw = CASE_OUTER_W / 2 - WALL - 2  # 2mm clearance from inner wall to LED strip
-    hd = CASE_OUTER_D / 2 - WALL - 2  # same inset on depth axis
-    # Four sides of the rim
-    shell = cut_led_channel(shell, -hw, -hd, hw, -hd, rim_z)   # front
-    shell = cut_led_channel(shell, hw, -hd, hw, hd, rim_z)     # right
-    shell = cut_led_channel(shell, hw, hd, -hw, hd, rim_z)     # back
-    shell = cut_led_channel(shell, -hw, hd, -hw, -hd, rim_z)   # left
+    # --- LED channels on chamfer faces (top perimeter) ---
+    shell = add_chamfer_led_channels(shell, CASE_OUTER_W, CASE_OUTER_D, PAGE1_H)
 
     return shell
 

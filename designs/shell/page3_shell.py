@@ -40,11 +40,14 @@ from designs.common.constants import (
     MOUNT_BOSS_OD,
     LATCH_HOUSING_W,
     RIDGE_H, RIDGE_W, RIDGE_DIAMOND,
+    PANEL_GROOVE_DEPTH,
     TOUCH_PAD_W, TOUCH_PAD_D, TOUCH_PAD_RECESS,
+    CHAMFER_SIZE,
 )
 from designs.common.mounting import (
     build_sculpted_shell, cut_pocket, add_mounting_boss,
-    add_ridge, cut_led_channel,
+    add_ridge, cut_led_channel, cut_armor_panels,
+    add_chamfer_led_channels,
 )
 
 try:
@@ -92,29 +95,27 @@ def build_page3():
         misc_w, misc_d, max(FLIPPER_H, CHARGER_H) + FOAM_BASE,
         floor_z=WALL, corner_r=2)
 
-    # --- Exosuit ridges on outer face (Z=0, which is the exterior when closed) ---
-    # 3 spine ridges running along Y (lengthwise on the cover)
-    ridge_z = PAGE3_H  # top face (exterior when assembled)
+    # --- Exosuit armor treatment on outer face ---
+    ridge_z = PAGE3_H
     hw = CASE_OUTER_W / 2
     hd = CASE_OUTER_D / 2
-    spine_positions = [-hw / 3, 0, hw / 3]  # three evenly spaced
+
+    spine_positions = [-hw / 3, 0, hw / 3]
+    lateral_positions = [-hd / 3, hd / 3]
+
+    # 3 spine ridges running along Y
     for sx in spine_positions:
         shell = add_ridge(shell, sx, -hd + 10, sx, hd - 10, z=ridge_z)
 
     # 2 lateral ridges running along X
-    lateral_positions = [-hd / 3, hd / 3]
     for ly in lateral_positions:
         shell = add_ridge(shell, -hw + 10, ly, hw - 10, ly, z=ridge_z)
 
-    # LED channels alongside each spine ridge
-    led_offset = RIDGE_W / 2 + 2  # offset from ridge centerline
-    for sx in spine_positions:
-        shell = cut_led_channel(shell, sx + led_offset, -hd + 12, sx + led_offset, hd - 12, z=ridge_z)
-    # LED channels alongside lateral ridges
-    for ly in lateral_positions:
-        shell = cut_led_channel(shell, -hw + 12, ly + led_offset, hw - 12, ly + led_offset, z=ridge_z)
+    # --- Armor panel groove lines alongside ridges ---
+    shell = cut_armor_panels(shell, CASE_OUTER_W, CASE_OUTER_D, PAGE3_H,
+                             spine_positions, lateral_positions)
 
-    # --- Ridge intersection diamonds ---
+    # --- Ridge intersection diamonds (at ridge height) ---
     for sx in spine_positions:
         for ly in lateral_positions:
             diamond = (
@@ -130,6 +131,48 @@ def build_page3():
                 pass
             shell = shell.union(diamond)
 
+    # --- LED channels alongside ridges (on panel surface) ---
+    led_offset = RIDGE_W / 2 + 2
+    for sx in spine_positions:
+        shell = cut_led_channel(shell, sx + led_offset, -hd + 12,
+                                sx + led_offset, hd - 12, z=ridge_z)
+    for ly in lateral_positions:
+        shell = cut_led_channel(shell, -hw + 12, ly + led_offset,
+                                hw - 12, ly + led_offset, z=ridge_z)
+
+    # --- Chamfer-face LED channels (perimeter) ---
+    shell = add_chamfer_led_channels(shell, CASE_OUTER_W, CASE_OUTER_D, PAGE3_H)
+
+    # --- Capacitive touch pad recesses ---
+    for ly in lateral_positions:
+        pad_recess = (
+            cq.Workplane("XY")
+            .workplane(offset=PAGE3_H - TOUCH_PAD_RECESS)
+            .center(spine_positions[0], ly)
+            .rect(TOUCH_PAD_W, TOUCH_PAD_D)
+            .extrude(TOUCH_PAD_RECESS + 0.1)
+        )
+        shell = shell.cut(pad_recess)
+
+    # --- Somni Labs logo deboss (in center panel) ---
+    logo_depth = 1.0
+    logo_z = PAGE3_H + RIDGE_H - logo_depth
+    logo_rect = (
+        cq.Workplane("XY")
+        .workplane(offset=logo_z)
+        .center(0, 0)
+        .rect(60, 20)
+        .extrude(logo_depth + 0.1)
+    )
+    logo_bar = (
+        cq.Workplane("XY")
+        .workplane(offset=logo_z)
+        .center(0, -18)
+        .rect(80, 3)
+        .extrude(logo_depth + 0.1)
+    )
+    shell = shell.cut(logo_rect).cut(logo_bar)
+
     # --- Mounting bosses: latch servo housings (2x on +X front edge) ---
     latch_spacing = CASE_OUTER_D / 3
     for i in range(2):
@@ -141,35 +184,6 @@ def build_page3():
     # --- Mounting bosses: keyboard cam lift (2x in pocket floor) ---
     shell = add_mounting_boss(shell, kb_cx - KB_W / 4, kb_cy, z=0, height=WALL)
     shell = add_mounting_boss(shell, kb_cx + KB_W / 4, kb_cy, z=0, height=WALL)
-
-    # --- Capacitive touch pad recesses (2x at lateral ridge intersections) ---
-    for ly in lateral_positions:
-        pad_recess = (
-            cq.Workplane("XY")
-            .workplane(offset=PAGE3_H - TOUCH_PAD_RECESS)
-            .center(spine_positions[0], ly)  # left intersection
-            .rect(TOUCH_PAD_W, TOUCH_PAD_D)
-            .extrude(TOUCH_PAD_RECESS + 0.1)
-        )
-        shell = shell.cut(pad_recess)
-
-    # --- Somni Labs logo deboss (geometric, no text/fontconfig) ---
-    logo_depth = 1.0
-    logo_rect = (
-        cq.Workplane("XY")
-        .workplane(offset=PAGE3_H + RIDGE_H - logo_depth)
-        .center(0, 0)
-        .rect(60, 20)
-        .extrude(logo_depth + 0.1)
-    )
-    logo_bar = (
-        cq.Workplane("XY")
-        .workplane(offset=PAGE3_H + RIDGE_H - logo_depth)
-        .center(0, -18)
-        .rect(80, 3)
-        .extrude(logo_depth + 0.1)
-    )
-    shell = shell.cut(logo_rect).cut(logo_bar)
 
     return shell
 

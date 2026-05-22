@@ -102,3 +102,39 @@ def test_armor_panels_remove_material():
     result = cut_armor_panels(shell, 400, 270, 50, spine_xs, lateral_ys)
     vol_after = result.val().Volume()
     assert vol_after < vol_before, "Armor panels should remove material from ridged surface"
+
+
+from designs.shell.page1_shell import build_page1
+from designs.shell.page2_shell import build_page2
+from designs.shell.page3_shell import build_page3
+from designs.common.constants import PAGE3_H
+
+
+def test_page1_builds_with_chamfer():
+    """Page 1 should build successfully with the chamfered shell."""
+    page1 = build_page1()
+    assert page1 is not None
+    bb = page1.val().BoundingBox()
+    assert bb.xlen > 400
+    assert bb.ylen > 260
+    assert bb.zlen > 70
+
+
+def test_page2_builds_with_chamfer():
+    """Page 2 should build successfully with the chamfered shell."""
+    page2 = build_page2()
+    assert page2 is not None
+    bb = page2.val().BoundingBox()
+    assert bb.xlen > 400
+    assert bb.ylen > 260
+    assert bb.zlen > 50
+
+
+def test_page3_builds_with_armor_panels():
+    """Page 3 should build successfully with armor panel treatment."""
+    page3 = build_page3()
+    assert page3 is not None
+    bb = page3.val().BoundingBox()
+    assert bb.xlen > 400
+    assert bb.ylen > 260
+    assert bb.zlen >= PAGE3_H
