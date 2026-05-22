@@ -19,6 +19,10 @@ WALL = 3               # outer shell wall thickness
 DIVIDER = 2            # internal divider wall thickness
 CORNER_R = 15          # outer corner fillet radius (organic, up from 5mm in V1)
 TAPER = 3              # shell taper per side (thicker center, thinner edges)
+CHAMFER_SIZE = 15      # 45-degree edge chamfer dimension (mm)
+PANEL_GROOVE_DEPTH = 1.5  # armor panel recess below ridge surface
+PANEL_GROOVE_WIDTH = 2    # groove cut width between panels
+PANEL_BEVEL = 1           # bevel transition at groove edges
 
 # =============================================================================
 # EXOSUIT RIDGES
