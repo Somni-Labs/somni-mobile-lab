@@ -38,6 +38,9 @@ from designs.common.constants import (
     PAGE1_H, PAGE2_H, PAGE3_H,
 )
 
+# Clean up so standalone modules loaded later in the same process aren't affected
+del os.environ['_CQ_ASSEMBLY']
+
 
 # ============================================================
 # Build all pages
