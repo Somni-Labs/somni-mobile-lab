@@ -159,6 +159,64 @@ def cut_pocket(body, cx, cy, pocket_w, pocket_d, pocket_h, floor_z, corner_r=2):
     return body.cut(pocket)
 
 
+def build_hinge_knuckles(page_height, case_depth, case_outer_w, parity="even",
+                         knuckle_od=HINGE_KNUCKLE_OD, knuckle_len=HINGE_KNUCKLE_LEN,
+                         gap=HINGE_GAP, rod_dia=HINGE_ROD_DIA):
+    """
+    Build interleaving piano-hinge knuckles along the -X edge of a page.
+
+    Knuckles are cylinders oriented along the Y axis, centered at:
+      X = -case_outer_w/2 (the left wall edge)
+      Z = page_height (top face, where pages meet)
+
+    parity="even" gives knuckle indices 0,2,4,... ; "odd" gives 1,3,5,...
+    Returns a single CadQuery solid (union of all knuckles with rod holes).
+    """
+    knuckle_r = knuckle_od / 2
+    rod_r = rod_dia / 2 + 0.15  # small clearance for rod
+
+    # How many knuckle slots fit along the depth
+    slot_pitch = knuckle_len + gap
+    n_slots = int(case_depth // slot_pitch)
+
+    # Center the knuckle array along Y
+    total_len = n_slots * slot_pitch - gap
+    y_start = -total_len / 2 + knuckle_len / 2
+
+    # Hinge center position
+    hinge_x = -case_outer_w / 2
+    hinge_z = page_height  # top face where pages meet
+
+    knuckles = None
+    start_idx = 0 if parity == "even" else 1
+
+    for i in range(start_idx, n_slots, 2):
+        cy = y_start + i * slot_pitch
+        # Build a cylinder along Y axis at the hinge line
+        knuckle = (
+            cq.Workplane("XZ")
+            .center(hinge_x, hinge_z)
+            .circle(knuckle_r)
+            .extrude(knuckle_len, both=False)
+            .translate((0, cy - knuckle_len / 2, 0))
+        )
+        # Cut the rod hole through
+        rod_hole = (
+            cq.Workplane("XZ")
+            .center(hinge_x, hinge_z)
+            .circle(rod_r)
+            .extrude(knuckle_len + 2, both=False)
+            .translate((0, cy - knuckle_len / 2 - 1, 0))
+        )
+        knuckle = knuckle.cut(rod_hole)
+        if knuckles is None:
+            knuckles = knuckle
+        else:
+            knuckles = knuckles.union(knuckle)
+
+    return knuckles
+
+
 # =============================================================================
 # PAGE 1 — BOTTOM (Power & Connectivity)
 # =============================================================================
@@ -276,6 +334,22 @@ except Exception:
         .extrude(1.0 + 0.1)
     )
     page3 = page3.cut(logo_rect)
+
+
+# =============================================================================
+# PIANO HINGE KNUCKLES
+# =============================================================================
+# Hinge along -X edge. Pages 1 & 3 get "even" knuckles, Page 2 gets "odd".
+# Knuckles sit at the TOP Z face of each page (where pages meet when stacked).
+
+_p1_hinges = build_hinge_knuckles(_p1_h, CASE_OUTER_D, CASE_OUTER_W, parity="even")
+_p2_hinges_bottom = build_hinge_knuckles(0, CASE_OUTER_D, CASE_OUTER_W, parity="odd")
+_p2_hinges_top = build_hinge_knuckles(_p2_h, CASE_OUTER_D, CASE_OUTER_W, parity="even")
+_p3_hinges = build_hinge_knuckles(0, CASE_OUTER_D, CASE_OUTER_W, parity="odd")
+
+page1 = page1.union(_p1_hinges)
+page2 = page2.union(_p2_hinges_bottom).union(_p2_hinges_top)
+page3 = page3.union(_p3_hinges)
 
 
 # =============================================================================
