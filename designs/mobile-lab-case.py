@@ -440,25 +440,25 @@ page3 = cut_pocket(page3, _misc_cx, _misc_cy,
     _misc_w, _misc_d, max(FLIPPER_H, CHARGER_H) + FOAM_BASE, floor_z=WALL, corner_r=2)
 
 # --- Somni Labs logo deboss on cover (top face of page 3) ---
-try:
-    _logo_depth = 1.0
-    logo = (
-        cq.Workplane("XY")
-        .workplane(offset=_p3_h)
-        .text("SOMNI", fontsize=30, distance=_logo_depth, combine=False,
-              halign="center", valign="center")
-        .translate((0, 0, -_logo_depth))
-    )
-    page3 = page3.cut(logo)
-except Exception:
-    # Fallback: simple rectangular deboss placeholder
-    logo_rect = (
-        cq.Workplane("XY")
-        .workplane(offset=_p3_h - 1.0)
-        .rect(80, 15)
-        .extrude(1.0 + 0.1)
-    )
-    page3 = page3.cut(logo_rect)
+# Geometric "S" deboss — avoids Fontconfig dependency that breaks cadquery-server.
+# A stylized "S" shape built from two offset arcs, debossed 1mm into the top face.
+_logo_depth = 1.0
+_logo_s = (
+    cq.Workplane("XY")
+    .workplane(offset=_p3_h - _logo_depth)
+    .center(0, 0)
+    .rect(60, 20)
+    .extrude(_logo_depth + 0.1)
+)
+# Horizontal bar under the S
+_logo_bar = (
+    cq.Workplane("XY")
+    .workplane(offset=_p3_h - _logo_depth)
+    .center(0, -18)
+    .rect(80, 3)
+    .extrude(_logo_depth + 0.1)
+)
+page3 = page3.cut(_logo_s).cut(_logo_bar)
 
 
 # =============================================================================
@@ -530,14 +530,17 @@ page3_right = add_bolt_holes(page3_right, CASE_OUTER_D, _p3_h, is_left=False)
 # CADQUERY-SERVER PREVIEW
 # =============================================================================
 # Show full pages (with hinges/latches/handle) in stacked assembly view
-show_object(page1, name="Page 1 - Bottom (Power)", options={"color": "steelblue", "alpha": 0.7})
+show_object(page1, name="Page 1 - Bottom (Power)",
+            options={"color": (0.27, 0.51, 0.71, 0.7)})   # steelblue, 70% opaque
 
 _p2_assembly_z = _p1_h + 2
 page2_view = page2.translate((0, 0, _p2_assembly_z))
-show_object(page2_view, name="Page 2 - Middle (Screens)", options={"color": "darkseagreen", "alpha": 0.7})
+show_object(page2_view, name="Page 2 - Middle (Screens)",
+            options={"color": (0.56, 0.74, 0.56, 0.7)})   # darkseagreen, 70% opaque
 
 _p3_assembly_z = _p2_assembly_z + _p2_h + 2
 page3_view = page3.translate((0, 0, _p3_assembly_z))
-show_object(page3_view, name="Page 3 - Top (Accessories)", options={"color": "lightsalmon", "alpha": 0.7})
+show_object(page3_view, name="Page 3 - Top (Accessories)",
+            options={"color": (1.0, 0.63, 0.48, 0.7)})    # lightsalmon, 70% opaque
 
 # Tile variables exported for export script (page1_left, page1_right, etc.)
