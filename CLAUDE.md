@@ -106,14 +106,16 @@ docs/
 - **RGBA tuples only**: `show_object()` colors MUST use RGBA tuples like `(0.27, 0.51, 0.71, 0.7)`, NOT CSS color name strings. String colors cause `TypeError: can only concatenate tuple (not "list") to tuple`.
 - **No `.text()` calls**: Fontconfig is not available in the cadquery-server container. Use geometric shapes (rectangles, etc.) for logos instead.
 - **Nested file discovery**: cadquery-server git-sync uses `find "${repo}/designs" -name "*.py" -not -name "__init__.py"` to symlink all design files from subdirectories (updated in SomniKubernetes ArgoCD manifest).
-- **sys.path bootstrap**: V2 assembly_preview.py uses `os.path.realpath(__file__)` to resolve the symlink back to the repo root and adds it to `sys.path` before package imports. This is required for `from designs.shell.page1_shell import ...` to work when the file is loaded via a symlink in `/projects/`.
+- **sys.path bootstrap**: Every V2 module uses `os.path.realpath(__file__)` to resolve the symlink back to the repo root and adds it to `sys.path` before package imports. This is required for `from designs.shell.page1_shell import ...` to work when files are loaded via symlinks in `/projects/`. Both assembly_preview.py AND all subsystem modules need this — each file is loaded independently by cadquery-server.
+- **Module-level `ui` import**: cadquery-server requires `from cq_server.ui import ui, show_object` at the module's top level (not inside an `if` block or function). The server scans for this import to detect show_object API usage. Use `try/except ImportError` with a `_cq_server` flag at module level, then guard `show_object()` calls at the bottom.
+- **`_CQ_ASSEMBLY` env var cleanup**: assembly_preview.py sets `os.environ['_CQ_ASSEMBLY'] = '1'` before importing subsystem modules to suppress their standalone `show_object()` calls. It MUST `del os.environ['_CQ_ASSEMBLY']` after imports — otherwise the env var persists in the process and prevents standalone subsystem previews from rendering when loaded later.
 
 ### Modular CadQuery package structure
 
 - Each subsystem is its own Python package under `designs/` with an `__init__.py`.
 - All parametric dimensions live in `designs/common/constants.py` — no magic numbers in subsystem files.
 - Shared CadQuery helpers (shell builder, pocket cutter, mounting boss, wire/LED channel, ridge, tile splitter) live in `designs/common/mounting.py`.
-- Every module has a `try/except ImportError` guard for standalone cadquery-server preview.
+- Every module has a top-level `try/except ImportError` for `cq_server.ui` (setting `_cq_server = True/False`) and guards `show_object()` calls with `if _cq_server and not os.environ.get('_CQ_ASSEMBLY'):`.
 - The export script (`export_v2.py`) mocks `cq_server` before importing modules so their standalone preview blocks don't fire.
 
 ### Print strategy
