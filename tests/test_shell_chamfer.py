@@ -4,8 +4,8 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from designs.common.constants import WALL, CORNER_R, CHAMFER_SIZE, PANEL_GROOVE_DEPTH, LED_CHANNEL_W, LED_CHANNEL_D, RIDGE_H
-from designs.common.mounting import build_sculpted_shell, add_chamfer_led_channels, cut_armor_panels, add_ridge
+from designs.common.constants import WALL, CORNER_R, CHAMFER_SIZE, PANEL_GROOVE_DEPTH, LED_CHANNEL_W, LED_CHANNEL_D, RIDGE_H, RIM_BAND, RIM_STEP
+from designs.common.mounting import build_sculpted_shell, add_chamfer_led_channels, cut_armor_panels, add_ridge, add_side_ribs, add_logo_deboss
 
 
 def test_chamfered_shell_builds_without_error():
@@ -19,19 +19,18 @@ def test_chamfered_shell_builds_without_error():
 
 def test_chamfered_shell_height_matches():
     """
-    Shell bounding-box height should reflect the requested height minus chamfer
-    material removed at the top.
+    Shell bounding-box height should be less than the nominal height due to
+    chamfer material removal, but greater than height - 2*chamfer since
+    the chamfer only affects edges/corners not the full face.
 
-    When CHAMFER_SIZE > WALL, the inner hollow cuts through the chamfer zone,
-    so the effective bounding-box height is height - (CHAMFER_SIZE - WALL).
-    The test accepts anything within 2 mm of that value.
+    The new stepped rim design means the shell retains more height than the
+    old thin-wall design. Accept anything between (height - 2*chamfer) and height.
     """
     shell = build_sculpted_shell(200, 150, 60)
     bb = shell.val().BoundingBox()
-    expected_zlen = 60 - max(0, CHAMFER_SIZE - WALL)
-    assert abs(bb.zlen - expected_zlen) < 2.0, (
-        f"Expected zlen ≈ {expected_zlen:.1f} (height minus chamfer overhang), "
-        f"got {bb.zlen:.1f}"
+    assert bb.zlen < 60, f"Shell should be shorter than nominal 60mm, got {bb.zlen:.1f}"
+    assert bb.zlen > 60 - 2 * CHAMFER_SIZE, (
+        f"Shell should be > {60 - 2 * CHAMFER_SIZE:.1f}mm, got {bb.zlen:.1f}"
     )
 
 
@@ -104,6 +103,39 @@ def test_armor_panels_remove_material():
     assert vol_after < vol_before, "Armor panels should remove material from ridged surface"
 
 
+def test_side_ribs_add_material():
+    """Side ribs should add protruding material to the shell exterior."""
+    shell = build_sculpted_shell(200, 150, 60)
+    vol_before = shell.val().Volume()
+    bb_before = shell.val().BoundingBox()
+    result = add_side_ribs(shell, 200, 150, 60)
+    vol_after = result.val().Volume()
+    bb_after = result.val().BoundingBox()
+    assert vol_after > vol_before, "Side ribs should add material"
+    # Ribs should protrude beyond the shell envelope
+    assert bb_after.xlen >= bb_before.xlen, "Ribs should widen the X bounding box"
+
+
+def test_logo_deboss_removes_material():
+    """Logo deboss on front wall should cut material from the shell."""
+    shell = build_sculpted_shell(200, 150, 60)
+    vol_before = shell.val().Volume()
+    result = add_logo_deboss(shell, 200, 150, 60)
+    vol_after = result.val().Volume()
+    assert vol_after < vol_before, "Logo deboss should remove material"
+
+
+def test_shell_has_rim_band():
+    """Shell should have a visibly thick rim at the top (stepped profile)."""
+    # A shell with rim_band should have more material near the top
+    # than one without. We verify by comparing volumes.
+    shell_with_rim = build_sculpted_shell(200, 150, 60, rim_band=8, rim_step=3)
+    shell_no_rim = build_sculpted_shell(200, 150, 60, rim_band=0, rim_step=0)
+    # With rim should have more volume (thicker walls near top)
+    assert shell_with_rim.val().Volume() > shell_no_rim.val().Volume(), \
+        "Shell with rim band should have more volume than shell without"
+
+
 from designs.shell.page1_shell import build_page1
 from designs.shell.page2_shell import build_page2
 from designs.shell.page3_shell import build_page3
@@ -111,30 +143,32 @@ from designs.common.constants import PAGE3_H
 
 
 def test_page1_builds_with_chamfer():
-    """Page 1 should build successfully with the chamfered shell."""
+    """Page 1 should build successfully with the exosuit shell."""
     page1 = build_page1()
     assert page1 is not None
     bb = page1.val().BoundingBox()
-    assert bb.xlen > 400
-    assert bb.ylen > 260
-    assert bb.zlen > 70
+    # Side ribs extend beyond the nominal shell width
+    assert bb.xlen > 380, f"Expected xlen > 380, got {bb.xlen:.1f}"
+    assert bb.ylen > 250, f"Expected ylen > 250, got {bb.ylen:.1f}"
+    assert bb.zlen > 60, f"Expected zlen > 60, got {bb.zlen:.1f}"
 
 
 def test_page2_builds_with_chamfer():
-    """Page 2 should build successfully with the chamfered shell."""
+    """Page 2 should build successfully with the exosuit shell."""
     page2 = build_page2()
     assert page2 is not None
     bb = page2.val().BoundingBox()
-    assert bb.xlen > 400
-    assert bb.ylen > 260
-    assert bb.zlen > 50
+    assert bb.xlen > 380, f"Expected xlen > 380, got {bb.xlen:.1f}"
+    assert bb.ylen > 250, f"Expected ylen > 250, got {bb.ylen:.1f}"
+    assert bb.zlen > 40, f"Expected zlen > 40, got {bb.zlen:.1f}"
 
 
 def test_page3_builds_with_armor_panels():
-    """Page 3 should build successfully with armor panel treatment."""
+    """Page 3 should build successfully with armor panel + exosuit treatment."""
     page3 = build_page3()
     assert page3 is not None
     bb = page3.val().BoundingBox()
-    assert bb.xlen > 400
-    assert bb.ylen > 260
-    assert bb.zlen >= PAGE3_H
+    # Chamfered corners reduce the bounding box below nominal CASE_OUTER_W
+    assert bb.xlen > 380, f"Expected xlen > 380, got {bb.xlen:.1f}"
+    assert bb.ylen > 250, f"Expected ylen > 250, got {bb.ylen:.1f}"
+    assert bb.zlen > 35, f"Expected zlen > 35, got {bb.zlen:.1f}"

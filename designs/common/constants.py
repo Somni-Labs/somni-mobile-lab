@@ -19,7 +19,10 @@ WALL = 3               # outer shell wall thickness
 DIVIDER = 2            # internal divider wall thickness
 CORNER_R = 15          # outer corner fillet radius (organic, up from 5mm in V1)
 TAPER = 3              # shell taper per side (thicker center, thinner edges)
-CHAMFER_SIZE = 15      # 45-degree edge chamfer dimension (mm)
+CHAMFER_SIZE = 10      # 45-degree edge chamfer dimension (mm)
+RIM_BAND = 8           # solid rim band depth at top (mm) — makes chamfer visible
+RIM_STEP = 3           # inward step of inner cavity below rim (mm)
+SIDE_TAPER_ANGLE = 3   # degrees of inward taper on side walls (0=vertical)
 PANEL_GROOVE_DEPTH = 1.5  # armor panel recess below ridge surface
 PANEL_GROOVE_WIDTH = 2    # groove cut width between panels
 PANEL_BEVEL = 1           # bevel transition at groove edges
@@ -32,6 +35,9 @@ RIDGE_W = 4            # ridge width
 RIDGE_CHAMFER = 0.5    # 45-degree chamfer on ridge edges (half of 1mm)
 RIDGE_ACCENT_H = 1.5   # side accent ridge height (thinner)
 RIDGE_ACCENT_W = 3     # side accent ridge width
+SIDE_RIB_W = 6         # bold vertical ribs on exterior side walls
+SIDE_RIB_H = 2         # how far side ribs protrude from wall surface
+SIDE_RIB_SPACING = 40  # spacing between side ribs (along long axis)
 RIDGE_DIAMOND = 3      # chamfered diamond size at ridge intersections
 
 # =============================================================================

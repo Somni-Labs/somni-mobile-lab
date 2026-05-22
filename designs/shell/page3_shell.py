@@ -47,7 +47,7 @@ from designs.common.constants import (
 from designs.common.mounting import (
     build_sculpted_shell, cut_pocket, add_mounting_boss,
     add_ridge, cut_led_channel, cut_armor_panels,
-    add_chamfer_led_channels,
+    add_chamfer_led_channels, add_side_ribs, add_logo_deboss,
 )
 
 try:
@@ -154,24 +154,11 @@ def build_page3():
         )
         shell = shell.cut(pad_recess)
 
-    # --- Somni Labs logo deboss (in center panel) ---
-    logo_depth = 1.0
-    logo_z = PAGE3_H + RIDGE_H - logo_depth
-    logo_rect = (
-        cq.Workplane("XY")
-        .workplane(offset=logo_z)
-        .center(0, 0)
-        .rect(60, 20)
-        .extrude(logo_depth + 0.1)
-    )
-    logo_bar = (
-        cq.Workplane("XY")
-        .workplane(offset=logo_z)
-        .center(0, -18)
-        .rect(80, 3)
-        .extrude(logo_depth + 0.1)
-    )
-    shell = shell.cut(logo_rect).cut(logo_bar)
+    # --- Exterior side ribs (bold vertical lines on all 4 walls) ---
+    shell = add_side_ribs(shell, CASE_OUTER_W, CASE_OUTER_D, PAGE3_H)
+
+    # --- Somni Labs logo deboss on front wall ---
+    shell = add_logo_deboss(shell, CASE_OUTER_W, CASE_OUTER_D, PAGE3_H)
 
     # --- Mounting bosses: latch servo housings (2x on +X front edge) ---
     latch_spacing = CASE_OUTER_D / 3

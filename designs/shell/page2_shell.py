@@ -40,7 +40,7 @@ from designs.common.constants import (
 )
 from designs.common.mounting import (
     build_sculpted_shell, cut_pocket, add_mounting_boss,
-    add_ridge, add_chamfer_led_channels,
+    add_ridge, add_chamfer_led_channels, add_side_ribs, add_logo_deboss,
 )
 
 try:
@@ -129,6 +129,12 @@ def build_page2():
 
     # --- LED channels on chamfer faces (top perimeter) ---
     shell = add_chamfer_led_channels(shell, CASE_OUTER_W, CASE_OUTER_D, PAGE2_H)
+
+    # --- Exterior side ribs (bold vertical lines on all 4 walls) ---
+    shell = add_side_ribs(shell, CASE_OUTER_W, CASE_OUTER_D, PAGE2_H)
+
+    # --- Logo deboss on front face ---
+    shell = add_logo_deboss(shell, CASE_OUTER_W, CASE_OUTER_D, PAGE2_H)
 
     return shell
 

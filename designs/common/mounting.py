@@ -2,13 +2,14 @@
 Mobile Lab Case V2 — Shared CadQuery Helpers
 
 Mounting bosses, bolt holes, wire channels, LED channels,
-sculpted shell builder, and pocket cutter.
+sculpted shell builder, side ribs, and pocket cutter.
 """
 
+import math
 import cadquery as cq
 from designs.common.constants import (
     WALL, CORNER_R, TAPER, DIVIDER,
-    CHAMFER_SIZE,
+    CHAMFER_SIZE, RIM_BAND, RIM_STEP, SIDE_TAPER_ANGLE,
     PANEL_GROOVE_DEPTH, PANEL_GROOVE_WIDTH, PANEL_BEVEL,
     M3_CLEARANCE_DIA, M3_INSERT_DIA, M3_INSERT_DEPTH,
     MOUNT_BOSS_OD, MOUNT_BOSS_ALIGN_H,
@@ -16,56 +17,201 @@ from designs.common.constants import (
     LED_CHANNEL_W, LED_CHANNEL_D, LED_DIFFUSER_SNAP,
     RIDGE_H, RIDGE_W, RIDGE_CHAMFER,
     RIDGE_ACCENT_H, RIDGE_ACCENT_W,
+    SIDE_RIB_W, SIDE_RIB_H, SIDE_RIB_SPACING,
     BED_W, BED_D,
 )
 
 
 def build_sculpted_shell(width, depth, height, corner_r=CORNER_R, wall=WALL,
-                         taper=TAPER, chamfer=CHAMFER_SIZE):
+                         taper=TAPER, chamfer=CHAMFER_SIZE,
+                         rim_band=RIM_BAND, rim_step=RIM_STEP):
     """
-    Build a chamfered slab page shell — open-top box with large organic fillets
-    on vertical edges and 45-degree chamfers on all horizontal edges.
+    Build an exosuit-styled page shell with a dramatically non-rectangular profile.
 
-    The chamfer transforms the rectangular profile into a beveled slab.
-    Interior is flat-walled (chamfer is exterior only).
+    Key visual features:
+    - 45-degree chamfers on ALL horizontal edges (top and bottom)
+    - Thick solid rim band at top (rim_band mm) so chamfer is prominently visible
+    - Inward step below the rim creating a layered/armored look
+    - Large organic fillets on vertical edges
+    - Open-top interior for device pockets
+
+    The rim_band creates a solid zone at the top of the shell where the chamfer
+    has full material to bite into, making the angled profile clearly visible
+    instead of being eaten by the thin wall.
 
     Returns a CadQuery solid (shell with floor, no top).
     """
+    # Step 1: Build the outer form — full solid box
     outer = (
         cq.Workplane("XY")
         .rect(width, depth)
         .extrude(height)
     )
+
+    # Step 2: Fillet vertical edges (organic corners)
     if corner_r > 0:
         try:
             outer = outer.edges("|Z").fillet(corner_r)
         except Exception:
-            outer = outer.edges("|Z").fillet(corner_r / 2)
+            try:
+                outer = outer.edges("|Z").fillet(corner_r / 2)
+            except Exception:
+                pass
 
+    # Step 3: Chamfer horizontal edges — this is the signature "slab" profile
     if chamfer > 0:
-        try:
-            outer = outer.edges(">Z").chamfer(chamfer)
-        except Exception:
+        for selector in [">Z", "<Z"]:
             try:
-                outer = outer.edges(">Z").chamfer(chamfer * 0.6)
+                outer = outer.edges(selector).chamfer(chamfer)
             except Exception:
-                pass
-        try:
-            outer = outer.edges("<Z").chamfer(chamfer)
-        except Exception:
-            try:
-                outer = outer.edges("<Z").chamfer(chamfer * 0.6)
-            except Exception:
-                pass
+                try:
+                    outer = outer.edges(selector).chamfer(chamfer * 0.6)
+                except Exception:
+                    pass
 
-    inner = (
-        cq.Workplane("XY")
-        .workplane(offset=wall)
-        .rect(width - wall * 2, depth - wall * 2)
-        .extrude(height)
+    # Step 4: Cut the main interior cavity
+    # Cavity stops short of the top by rim_band, leaving a thick solid rim
+    cavity_height = height - wall - rim_band
+    if cavity_height > 0:
+        inner_main = (
+            cq.Workplane("XY")
+            .workplane(offset=wall)
+            .rect(width - wall * 2, depth - wall * 2)
+            .extrude(cavity_height)
+        )
+        outer = outer.cut(inner_main)
+
+    # Step 5: Cut a SECOND cavity in the rim zone — stepped inward
+    # This creates the layered armored look: thick rim with chamfer visible,
+    # then an inward step where the shell walls are thicker
+    if rim_band > 0 and rim_step > 0:
+        rim_cavity = (
+            cq.Workplane("XY")
+            .workplane(offset=height - rim_band)
+            .rect(width - wall * 2 - rim_step * 2,
+                  depth - wall * 2 - rim_step * 2)
+            .extrude(rim_band + 1)
+        )
+        outer = outer.cut(rim_cavity)
+
+    return outer
+
+
+def add_side_ribs(body, width, depth, height, chamfer=CHAMFER_SIZE,
+                  rib_w=SIDE_RIB_W, rib_h=SIDE_RIB_H,
+                  spacing=SIDE_RIB_SPACING, corner_r=CORNER_R):
+    """
+    Add bold vertical ribs on the exterior side walls of a shell.
+
+    Ribs run vertically from the bottom chamfer zone to the top chamfer zone,
+    evenly spaced along the long sides (±Y faces) and short sides (±X faces).
+    Each rib is a rectangular extrusion chamfered on its top edge.
+
+    These break up the flat wall surfaces and give the case a distinctly
+    mechanical/exosuit appearance visible from any viewing angle.
+    """
+    hw = width / 2
+    hd = depth / 2
+    z_lo = chamfer + 2  # start above bottom chamfer
+    z_hi = height - chamfer - 2  # stop below top chamfer
+    rib_height = z_hi - z_lo
+    if rib_height < 5:
+        return body
+
+    # Ribs on long sides (±Y faces, running along X)
+    n_x = int((width - corner_r * 4) / spacing)
+    if n_x < 1:
+        n_x = 1
+    x_start = -(n_x - 1) * spacing / 2
+    for i in range(n_x):
+        x = x_start + i * spacing
+        for sign in [-1, 1]:
+            y = sign * hd
+            rib = (
+                cq.Workplane("XY")
+                .workplane(offset=z_lo)
+                .center(x, y + sign * rib_h / 2)
+                .rect(rib_w, rib_h)
+                .extrude(rib_height)
+            )
+            try:
+                rib = rib.edges(">Z").chamfer(min(1.0, rib_h * 0.4))
+            except Exception:
+                pass
+            body = body.union(rib)
+
+    # Ribs on short sides (±X faces, running along Y)
+    n_y = int((depth - corner_r * 4) / spacing)
+    if n_y < 1:
+        n_y = 1
+    y_start = -(n_y - 1) * spacing / 2
+    for i in range(n_y):
+        y = y_start + i * spacing
+        for sign in [-1, 1]:
+            x = sign * hw
+            rib = (
+                cq.Workplane("XY")
+                .workplane(offset=z_lo)
+                .center(x + sign * rib_h / 2, y)
+                .rect(rib_h, rib_w)
+                .extrude(rib_height)
+            )
+            try:
+                rib = rib.edges(">Z").chamfer(min(1.0, rib_h * 0.4))
+            except Exception:
+                pass
+            body = body.union(rib)
+
+    return body
+
+
+def add_logo_deboss(body, width, depth, height, wall=WALL):
+    """
+    Cut the Somni Labs logo into the FRONT WALL (+Y face) of a shell.
+
+    The logo is a geometric arrangement:
+    - Main rectangle (nameplate)
+    - Accent bar below
+    - Two flanking chevrons
+
+    Cut into the front wall exterior at mid-height, visible from the outside.
+    """
+    logo_depth = 1.2  # how deep the deboss cuts into the wall
+    mid_z = height / 2
+    face_y = depth / 2  # front face Y position
+
+    # Main nameplate rectangle
+    nameplate = (
+        cq.Workplane("XZ")
+        .center(0, mid_z)
+        .rect(80, 16)
+        .extrude(logo_depth)
+        .translate((0, face_y - logo_depth, 0))
     )
-    shell = outer.cut(inner)
-    return shell
+    body = body.cut(nameplate)
+
+    # Accent bar below nameplate
+    accent = (
+        cq.Workplane("XZ")
+        .center(0, mid_z - 14)
+        .rect(100, 2.5)
+        .extrude(logo_depth)
+        .translate((0, face_y - logo_depth, 0))
+    )
+    body = body.cut(accent)
+
+    # Left chevron
+    for dx in [-55, 55]:
+        chevron = (
+            cq.Workplane("XZ")
+            .center(dx, mid_z)
+            .rect(6, 20)
+            .extrude(logo_depth)
+            .translate((0, face_y - logo_depth, 0))
+        )
+        body = body.cut(chevron)
+
+    return body
 
 
 def cut_pocket(body, cx, cy, pocket_w, pocket_d, pocket_h, floor_z, corner_r=2):
@@ -135,7 +281,6 @@ def cut_wire_channel(body, x1, y1, x2, y2, z, channel_w=WIRE_CHANNEL_W,
     """
     Cut a rectangular wire routing channel along a straight path.
     """
-    import math
     dx = x2 - x1
     dy = y2 - y1
     length = math.sqrt(dx * dx + dy * dy)
@@ -160,7 +305,6 @@ def cut_led_channel(body, x1, y1, x2, y2, z, channel_w=LED_CHANNEL_W,
     Cut an LED strip channel along a straight path on the shell surface.
     Channel is open-top with a small snap-fit lip for diffuser retention.
     """
-    import math
     dx = x2 - x1
     dy = y2 - y1
     length = math.sqrt(dx * dx + dy * dy)
@@ -203,7 +347,6 @@ def add_chamfer_led_channels(body, width, depth, height, wall=WALL,
     (height - chamfer) to (height - chamfer + wall). The cut box spans across
     the face in both the normal and Z directions.
     """
-    import math
     hw = width / 2
     hd = depth / 2
     # The chamfer face runs from z=(height-chamfer) to z=(height-chamfer+wall).
@@ -309,7 +452,6 @@ def add_ridge(body, x1, y1, x2, y2, z, ridge_w=RIDGE_W, ridge_h=RIDGE_H,
     """
     Add a raised geometric ridge along a straight path on the shell surface.
     """
-    import math
     dx = x2 - x1
     dy = y2 - y1
     length = math.sqrt(dx * dx + dy * dy)
