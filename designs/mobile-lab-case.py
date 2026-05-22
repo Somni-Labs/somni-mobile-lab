@@ -217,6 +217,65 @@ def build_hinge_knuckles(page_height, case_depth, case_outer_w, parity="even",
     return knuckles
 
 
+def build_latch(latch_w=LATCH_W, latch_h=LATCH_H, latch_hook=LATCH_HOOK, wall=WALL):
+    """
+    Build a snap latch — returns (body, catch) tuple.
+
+    body: The latch arm with hook, attaches to the closing page (page3 outer face).
+    catch: The catch ledge, attaches to the receiving page (page1 top edge).
+    Both are centered at origin; caller translates to final position.
+    """
+    # Latch body: a flat arm with a hook at the bottom
+    arm_thick = wall
+    arm = (
+        cq.Workplane("XY")
+        .rect(latch_w, arm_thick)
+        .extrude(latch_h)
+    )
+    # Hook at the bottom of the arm (extends inward in +Y direction)
+    hook = (
+        cq.Workplane("XY")
+        .center(0, arm_thick / 2)
+        .rect(latch_w, latch_hook + arm_thick)
+        .extrude(arm_thick)
+    )
+    body = arm.union(hook)
+
+    # Catch: a ledge that the hook grabs onto
+    catch = (
+        cq.Workplane("XY")
+        .rect(latch_w, latch_hook + arm_thick + 0.5)
+        .extrude(arm_thick)
+    )
+
+    return body, catch
+
+
+def build_carry_handle(handle_w=HANDLE_W, handle_h=HANDLE_H, handle_thick=HANDLE_THICK):
+    """
+    Build a carry handle — a U-shaped loop.
+    Oriented so the grip span is along Y, extending outward in -X.
+    Centered at origin; caller translates to final position.
+    """
+    # Build as a rounded rectangle with a hole cut through it
+    outer = (
+        cq.Workplane("XY")
+        .rect(handle_h, handle_w + handle_thick * 2)
+        .extrude(handle_thick)
+    )
+    try:
+        outer = outer.edges("|Z").fillet(handle_thick / 2 - 0.1)
+    except Exception:
+        pass
+    inner = (
+        cq.Workplane("XY")
+        .rect(handle_h - handle_thick * 2, handle_w)
+        .extrude(handle_thick)
+    )
+    handle = outer.cut(inner)
+    return handle
+
+
 # =============================================================================
 # PAGE 1 — BOTTOM (Power & Connectivity)
 # =============================================================================
@@ -350,6 +409,37 @@ _p3_hinges = build_hinge_knuckles(0, CASE_OUTER_D, CASE_OUTER_W, parity="odd")
 page1 = page1.union(_p1_hinges)
 page2 = page2.union(_p2_hinges_bottom).union(_p2_hinges_top)
 page3 = page3.union(_p3_hinges)
+
+
+# =============================================================================
+# SNAP LATCHES AND CARRY HANDLE
+# =============================================================================
+# Two latches along +X (front) edge, evenly spaced along Y.
+_latch_body, _latch_catch = build_latch()
+
+_latch_x = CASE_OUTER_W / 2 + WALL / 2   # just outside the +X wall
+_latch_spacing = CASE_OUTER_D / 3          # thirds along depth
+
+for i in range(LATCH_COUNT):
+    _ly = -CASE_OUTER_D / 3 + i * _latch_spacing
+
+    # Latch body on page3 at Z=0 (outer face when closed, facing down)
+    _body_placed = _latch_body.translate((_latch_x, _ly, 0))
+    page3 = page3.union(_body_placed)
+
+    # Latch catch on page1 at Z=_p1_h (top edge)
+    _catch_placed = _latch_catch.translate((_latch_x, _ly, _p1_h))
+    page1 = page1.union(_catch_placed)
+
+# Carry handle on the -X (hinge) edge of page2, centered vertically.
+_handle = build_carry_handle()
+# Rotate so handle grip extends outward in -X direction
+_handle = (
+    _handle
+    .rotate((0, 0, 0), (0, 1, 0), 90)  # now extends in X direction
+    .translate((-CASE_OUTER_W / 2 - HANDLE_H / 2, 0, _p2_h / 2))
+)
+page2 = page2.union(_handle)
 
 
 # =============================================================================
