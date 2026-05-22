@@ -17,7 +17,10 @@ from designs.common.constants import (
     LED_CHANNEL_W, LED_CHANNEL_D, LED_DIFFUSER_SNAP,
     RIDGE_H, RIDGE_W, RIDGE_CHAMFER,
     RIDGE_ACCENT_H, RIDGE_ACCENT_W,
-    SIDE_RIB_W, SIDE_RIB_H, SIDE_RIB_SPACING,
+    HERO_PLATE_W, HERO_PLATE_H, HERO_PLATE_PROUD, HERO_PLATE_RECESS,
+    HEX_SIZE, HEX_WALL, HEX_PANEL_RECESS, HEX_POCKET_EXTRA,
+    FRAME_GROOVE_W, FRAME_GROOVE_D,
+    STRUCT_RIB_W, STRUCT_RIB_H, STRUCT_RIB_BACK_N, STRUCT_RIB_SIDE_N,
     BED_W, BED_D,
 )
 
@@ -98,8 +101,8 @@ def build_sculpted_shell(width, depth, height, corner_r=CORNER_R, wall=WALL,
 
 
 def add_side_ribs(body, width, depth, height, chamfer=CHAMFER_SIZE,
-                  rib_w=SIDE_RIB_W, rib_h=SIDE_RIB_H,
-                  spacing=SIDE_RIB_SPACING, corner_r=CORNER_R):
+                  rib_w=STRUCT_RIB_W, rib_h=STRUCT_RIB_H,
+                  spacing=40, corner_r=CORNER_R):
     """
     Add bold vertical ribs on the exterior side walls of a shell.
 
