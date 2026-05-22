@@ -157,3 +157,36 @@ def cut_pocket(body, cx, cy, pocket_w, pocket_d, pocket_h, floor_z, corner_r=2):
     if corner_r > 0:
         pocket = pocket.edges("|Z").fillet(corner_r)
     return body.cut(pocket)
+
+
+# =============================================================================
+# PAGE 1 — BOTTOM (Power & Connectivity)
+# =============================================================================
+_p1_h = PAGE1_DEPTH + WALL
+
+page1 = build_page_shell(CASE_OUTER_W, CASE_OUTER_D, _p1_h)
+
+# Starlink Mini pocket (left side, spanning nearly full depth)
+_starlink_cx = -CASE_INNER_W / 2 + DIVIDER + STARLINK_W / 2
+_starlink_cy = 0
+page1 = cut_pocket(page1, _starlink_cx, _starlink_cy,
+    STARLINK_W, STARLINK_D, STARLINK_H + FOAM_BASE, floor_z=WALL, corner_r=3)
+
+# Right column: space to the right of the Starlink Mini
+_right_col_left = _starlink_cx + STARLINK_W / 2 + DIVIDER
+_right_col_w = CASE_INNER_W / 2 - DIVIDER - _right_col_left
+
+# Starlink PSU pocket (top-right)
+_psu_cx = _right_col_left + STARLINK_PSU_W / 2
+_psu_cy = CASE_INNER_D / 2 - DIVIDER - STARLINK_PSU_D / 2
+page1 = cut_pocket(page1, _psu_cx, _psu_cy,
+    STARLINK_PSU_W, STARLINK_PSU_D, STARLINK_PSU_H + FOAM_BASE, floor_z=WALL, corner_r=2)
+
+# Battery Bank pocket (bottom-right, rotated 90deg to fit the narrow column)
+# Physical battery is 182x82, placed as 82(W) x 182(D) in the right column
+_bat_pocket_w = BATTERY_D   # 82mm (rotated: depth becomes width)
+_bat_pocket_d = BATTERY_W   # 182mm (rotated: width becomes depth)
+_bat_cx = _right_col_left + _bat_pocket_w / 2
+_bat_cy = _psu_cy - STARLINK_PSU_D / 2 - DIVIDER - _bat_pocket_d / 2
+page1 = cut_pocket(page1, _bat_cx, _bat_cy,
+    _bat_pocket_w, _bat_pocket_d, BATTERY_H + FOAM_BASE, floor_z=WALL, corner_r=2)
