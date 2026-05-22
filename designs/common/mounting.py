@@ -9,6 +9,7 @@ import cadquery as cq
 from designs.common.constants import (
     WALL, CORNER_R, TAPER, DIVIDER,
     CHAMFER_SIZE,
+    PANEL_GROOVE_DEPTH, PANEL_GROOVE_WIDTH, PANEL_BEVEL,
     M3_CLEARANCE_DIA, M3_INSERT_DIA, M3_INSERT_DEPTH,
     MOUNT_BOSS_OD, MOUNT_BOSS_ALIGN_H,
     WIRE_CHANNEL_W, WIRE_CHANNEL_D,
@@ -188,6 +189,123 @@ def cut_led_channel(body, x1, y1, x2, y2, z, channel_w=LED_CHANNEL_W,
         if abs(angle) > 0.01:
             lip = lip.rotate((cx, cy, 0), (cx, cy, 1), angle)
         body = body.union(lip)
+    return body
+
+
+def add_chamfer_led_channels(body, width, depth, height, wall=WALL,
+                              chamfer=CHAMFER_SIZE,
+                              channel_w=LED_CHANNEL_W, channel_d=LED_CHANNEL_D):
+    """
+    Cut LED channels into the 4 chamfer faces around the top perimeter of a page shell.
+
+    Each channel runs along the midline of a chamfer face. The channel groove is
+    centered on the chamfer face, which occupies the Z range from
+    (height - chamfer) to (height - chamfer + wall). The cut box spans across
+    the face in both the normal and Z directions.
+    """
+    import math
+    hw = width / 2
+    hd = depth / 2
+    # The chamfer face runs from z=(height-chamfer) to z=(height-chamfer+wall).
+    # Center Z of the face: height - chamfer + wall/2
+    chamfer_z_lo = height - chamfer
+    cz = chamfer_z_lo + wall / 2
+    # Half-size of the cut perpendicular to the chamfer face (45-deg projection).
+    cut_half = channel_d / math.sqrt(2)
+    corner_clearance = chamfer + 5
+
+    # Each side: (center_x, center_y, length, axis_along_face)
+    # Outer face center in the normal direction: hw - wall/2 (for ±X faces),
+    # hd - wall/2 (for ±Y faces). Inner edge: hw - wall / hd - wall.
+    # We center the cut between outer and inner, then extend ±cut_half.
+    cy_front_outer = hd - (cz - chamfer_z_lo)   # outer Y at cz for ±Y faces
+    cy_front_inner = hd - wall                   # inner Y for ±Y faces
+    cy_front = (cy_front_outer + cy_front_inner) / 2
+
+    cx_side_outer = hw - (cz - chamfer_z_lo)     # outer X at cz for ±X faces
+    cx_side_inner = hw - wall                     # inner X for ±X faces
+    cx_side = (cx_side_outer + cx_side_inner) / 2
+
+    length_x = width - corner_clearance * 2
+    length_y = depth - corner_clearance * 2
+
+    sides = [
+        (0, -cy_front, length_x, "X"),
+        (0, +cy_front, length_x, "X"),
+        (+cx_side, 0, length_y, "Y"),
+        (-cx_side, 0, length_y, "Y"),
+    ]
+
+    for cx, cy, length, axis in sides:
+        if length <= 0:
+            continue
+        channel = (
+            cq.Workplane("XY")
+            .workplane(offset=cz - cut_half)
+            .center(cx, cy)
+        )
+        if axis == "X":
+            channel = channel.rect(length, cut_half * 2).extrude(cut_half * 2)
+        else:
+            channel = channel.rect(cut_half * 2, length).extrude(cut_half * 2)
+        body = body.cut(channel)
+
+    return body
+
+
+def cut_armor_panels(body, width, depth, height, spine_xs, lateral_ys,
+                     chamfer=CHAMFER_SIZE, groove_depth=PANEL_GROOVE_DEPTH,
+                     groove_width=PANEL_GROOVE_WIDTH, ridge_w=RIDGE_W,
+                     edge_inset=10):
+    """
+    Cut recessed armor panel zones into the exterior bottom face of a page shell.
+
+    The exterior face is divided into a grid by spine ridges (at spine_xs along X)
+    and lateral ridges (at lateral_ys along Y). The panel zones between ridges
+    are recessed groove_depth into the shell from the exterior face (z=0).
+
+    The ridges remain at the original surface height. Panels are cut below.
+    """
+    hw = width / 2
+    hd = depth / 2
+    x_bounds = sorted([-hw + chamfer] + list(spine_xs) + [hw - chamfer])
+    y_bounds = sorted([-hd + chamfer] + list(lateral_ys) + [hd - chamfer])
+    half_rw = ridge_w / 2 + groove_width / 2
+
+    for i in range(len(x_bounds) - 1):
+        for j in range(len(y_bounds) - 1):
+            x_lo = x_bounds[i]
+            x_hi = x_bounds[i + 1]
+            y_lo = y_bounds[j]
+            y_hi = y_bounds[j + 1]
+
+            panel_x_lo = x_lo + half_rw if x_lo in spine_xs else x_lo + groove_width
+            panel_x_hi = x_hi - half_rw if x_hi in spine_xs else x_hi - groove_width
+            panel_y_lo = y_lo + half_rw if y_lo in lateral_ys else y_lo + groove_width
+            panel_y_hi = y_hi - half_rw if y_hi in lateral_ys else y_hi - groove_width
+
+            if panel_x_hi - panel_x_lo < 5 or panel_y_hi - panel_y_lo < 5:
+                continue
+
+            panel_cx = (panel_x_lo + panel_x_hi) / 2
+            panel_cy = (panel_y_lo + panel_y_hi) / 2
+            panel_w = panel_x_hi - panel_x_lo
+            panel_d = panel_y_hi - panel_y_lo
+
+            # Recess cuts from the exterior bottom face (z=0) upward by groove_depth.
+            recess = (
+                cq.Workplane("XY")
+                .workplane(offset=-0.1)
+                .center(panel_cx, panel_cy)
+                .rect(panel_w, panel_d)
+                .extrude(groove_depth + 0.1)
+            )
+            try:
+                recess = recess.edges(">Z").chamfer(min(PANEL_BEVEL, groove_depth * 0.4))
+            except Exception:
+                pass
+            body = body.cut(recess)
+
     return body
 
 

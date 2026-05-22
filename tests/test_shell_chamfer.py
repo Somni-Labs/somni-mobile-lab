@@ -4,8 +4,8 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from designs.common.constants import WALL, CORNER_R, CHAMFER_SIZE
-from designs.common.mounting import build_sculpted_shell
+from designs.common.constants import WALL, CORNER_R, CHAMFER_SIZE, PANEL_GROOVE_DEPTH, LED_CHANNEL_W, LED_CHANNEL_D
+from designs.common.mounting import build_sculpted_shell, add_chamfer_led_channels, cut_armor_panels
 
 
 def test_chamfered_shell_builds_without_error():
@@ -53,3 +53,41 @@ def test_chamfered_shell_has_floor():
     shell = build_sculpted_shell(200, 150, 60)
     bb = shell.val().BoundingBox()
     assert bb.zmin < 0.1, "Shell should start at Z≈0"
+
+
+def test_chamfer_led_channels_build():
+    """Adding chamfer LED channels should not error."""
+    shell = build_sculpted_shell(200, 150, 60)
+    result = add_chamfer_led_channels(shell, 200, 150, 60)
+    assert result is not None
+    bb = result.val().BoundingBox()
+    assert abs(bb.xlen - 200) < 1.0
+
+
+def test_chamfer_led_channels_remove_material():
+    """Chamfer LED channels should cut material from the shell."""
+    shell = build_sculpted_shell(200, 150, 60)
+    vol_before = shell.val().Volume()
+    result = add_chamfer_led_channels(shell, 200, 150, 60)
+    vol_after = result.val().Volume()
+    assert vol_after < vol_before, "LED channels should remove material"
+
+
+def test_armor_panels_build():
+    """Cutting armor panels should not error."""
+    shell = build_sculpted_shell(400, 270, 50)
+    spine_xs = [-400 / 6, 0, 400 / 6]
+    lateral_ys = [-270 / 6, 270 / 6]
+    result = cut_armor_panels(shell, 400, 270, 50, spine_xs, lateral_ys)
+    assert result is not None
+
+
+def test_armor_panels_remove_material():
+    """Armor panels should recess material from the top face."""
+    shell = build_sculpted_shell(400, 270, 50)
+    vol_before = shell.val().Volume()
+    spine_xs = [-400 / 6, 0, 400 / 6]
+    lateral_ys = [-270 / 6, 270 / 6]
+    result = cut_armor_panels(shell, 400, 270, 50, spine_xs, lateral_ys)
+    vol_after = result.val().Volume()
+    assert vol_after < vol_before, "Armor panels should remove material"
