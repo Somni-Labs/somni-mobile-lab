@@ -5,6 +5,7 @@ MG996R servo mount bracket that bolts to the Page 1 spine wall.
 Includes a spur gear that meshes with the gear sector on the hinge knuckle.
 """
 
+import os
 import cadquery as cq
 import math
 from designs.common.constants import (
@@ -116,13 +117,14 @@ def build_spur_gear(n_teeth=12, module_mm=1.5, thickness=8, bore_dia=6):
 
 
 # --- Standalone preview ---
-try:
-    from cq_server.ui import ui, show_object
-    mount = build_servo_mount()
-    show_object(mount, name="Hinge Servo Mount (MG996R)",
-                options={"color": (0.4, 0.4, 0.4, 0.9)})
-    gear = build_spur_gear().translate((60, 0, 0))
-    show_object(gear, name="Spur Gear",
-                options={"color": (0.6, 0.6, 0.3, 0.9)})
-except ImportError:
-    pass
+if not os.environ.get('_CQ_ASSEMBLY'):
+    try:
+        from cq_server.ui import ui, show_object
+        mount = build_servo_mount()
+        show_object(mount, name="Hinge Servo Mount (MG996R)",
+                    options={"color": (0.4, 0.4, 0.4, 0.9)})
+        gear = build_spur_gear().translate((60, 0, 0))
+        show_object(gear, name="Spur Gear",
+                    options={"color": (0.6, 0.6, 0.3, 0.9)})
+    except ImportError:
+        pass

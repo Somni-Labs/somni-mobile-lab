@@ -5,6 +5,7 @@ MG996R servo mount on the platform underside + printed linkage arm
 that drives the tilt hinge. Tilt range: 0-45 degrees.
 """
 
+import os
 import cadquery as cq
 from designs.common.constants import (
     MG996R_W, MG996R_D, MG996R_H,
@@ -76,13 +77,14 @@ def build_linkage_arm(length=40, width=10, thickness=5, hole_dia=3):
 
 
 # --- Standalone preview ---
-try:
-    from cq_server.ui import ui, show_object
-    mount = build_tilt_servo_mount()
-    show_object(mount, name="Tilt Servo Mount",
-                options={"color": (0.4, 0.4, 0.5, 0.9)})
-    arm = build_linkage_arm().translate((0, 40, 0))
-    show_object(arm, name="Tilt Linkage Arm",
-                options={"color": (0.6, 0.4, 0.3, 0.9)})
-except ImportError:
-    pass
+if not os.environ.get('_CQ_ASSEMBLY'):
+    try:
+        from cq_server.ui import ui, show_object
+        mount = build_tilt_servo_mount()
+        show_object(mount, name="Tilt Servo Mount",
+                    options={"color": (0.4, 0.4, 0.5, 0.9)})
+        arm = build_linkage_arm().translate((0, 40, 0))
+        show_object(arm, name="Tilt Linkage Arm",
+                    options={"color": (0.6, 0.4, 0.3, 0.9)})
+    except ImportError:
+        pass

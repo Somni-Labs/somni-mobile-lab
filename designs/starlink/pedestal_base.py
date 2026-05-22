@@ -7,6 +7,7 @@ Mounts inside Page 1 beneath the Starlink pocket. Contains:
   - M3 mounting holes to bolt onto Page 1 floor bosses
 """
 
+import os
 import cadquery as cq
 from designs.common.constants import (
     STARLINK_W, STARLINK_D,
@@ -92,10 +93,11 @@ def build_pedestal_base():
 
 
 # --- Standalone preview ---
-try:
-    from cq_server.ui import ui, show_object
-    base = build_pedestal_base()
-    show_object(base, name="Pedestal Base",
-                options={"color": (0.3, 0.3, 0.6, 0.9)})
-except ImportError:
-    pass
+if not os.environ.get('_CQ_ASSEMBLY'):
+    try:
+        from cq_server.ui import ui, show_object
+        base = build_pedestal_base()
+        show_object(base, name="Pedestal Base",
+                    options={"color": (0.3, 0.3, 0.6, 0.9)})
+    except ImportError:
+        pass

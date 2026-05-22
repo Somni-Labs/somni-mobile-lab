@@ -6,6 +6,7 @@ Contains ESP32, PCA9685, TP4056, boost converter, LiPo cell.
 Removable lid with M2 screws. USB-C port cutout on one end.
 """
 
+import os
 import cadquery as cq
 from designs.common.constants import (
     EBAY_INNER_W, EBAY_INNER_D, EBAY_INNER_H, EBAY_WALL,
@@ -120,13 +121,14 @@ def build_electronics_bay_lid():
 
 
 # --- Standalone preview ---
-try:
-    from cq_server.ui import ui, show_object
-    bay = build_electronics_bay()
-    show_object(bay, name="Electronics Bay",
-                options={"color": (0.3, 0.3, 0.3, 0.9)})
-    lid = build_electronics_bay_lid().translate((0, 0, EBAY_INNER_H + EBAY_WALL + 5))
-    show_object(lid, name="Bay Lid",
-                options={"color": (0.5, 0.5, 0.5, 0.8)})
-except ImportError:
-    pass
+if not os.environ.get('_CQ_ASSEMBLY'):
+    try:
+        from cq_server.ui import ui, show_object
+        bay = build_electronics_bay()
+        show_object(bay, name="Electronics Bay",
+                    options={"color": (0.3, 0.3, 0.3, 0.9)})
+        lid = build_electronics_bay_lid().translate((0, 0, EBAY_INNER_H + EBAY_WALL + 5))
+        show_object(lid, name="Bay Lid",
+                    options={"color": (0.5, 0.5, 0.5, 0.8)})
+    except ImportError:
+        pass

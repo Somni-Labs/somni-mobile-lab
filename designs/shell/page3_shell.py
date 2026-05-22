@@ -18,6 +18,7 @@ Includes:
 Loadable by cadquery-server via show_object().
 """
 
+import os
 import cadquery as cq
 from designs.common.constants import (
     WALL, DIVIDER, CORNER_R,
@@ -160,10 +161,11 @@ def build_page3():
 
 
 # --- Standalone preview for cadquery-server ---
-try:
-    from cq_server.ui import ui, show_object
-    page3 = build_page3()
-    show_object(page3, name="Page 3 - Top (Accessories)",
-                options={"color": (1.0, 0.63, 0.48, 0.7)})
-except ImportError:
-    pass
+if not os.environ.get('_CQ_ASSEMBLY'):
+    try:
+        from cq_server.ui import ui, show_object
+        page3 = build_page3()
+        show_object(page3, name="Page 3 - Top (Accessories)",
+                    options={"color": (1.0, 0.63, 0.48, 0.7)})
+    except ImportError:
+        pass

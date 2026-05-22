@@ -6,6 +6,7 @@ Sized per device pocket. The plate has a tab that extends down through
 the floor slot to contact the cam.
 """
 
+import os
 import cadquery as cq
 from designs.common.constants import (
     LAPTOP_W, LAPTOP_D,
@@ -72,16 +73,17 @@ def build_keyboard_lift_plate():
 
 
 # --- Standalone preview ---
-try:
-    from cq_server.ui import ui, show_object
-    lp = build_laptop_lift_plate()
-    show_object(lp, name="Laptop Lift Plate",
-                options={"color": (0.6, 0.6, 0.8, 0.8)})
-    mp = build_monitor_lift_plate().translate((0, 0, 30))
-    show_object(mp, name="Monitor Lift Plate",
-                options={"color": (0.6, 0.8, 0.6, 0.8)})
-    kp = build_keyboard_lift_plate().translate((0, 0, 60))
-    show_object(kp, name="Keyboard Lift Plate",
-                options={"color": (0.8, 0.6, 0.6, 0.8)})
-except ImportError:
-    pass
+if not os.environ.get('_CQ_ASSEMBLY'):
+    try:
+        from cq_server.ui import ui, show_object
+        lp = build_laptop_lift_plate()
+        show_object(lp, name="Laptop Lift Plate",
+                    options={"color": (0.6, 0.6, 0.8, 0.8)})
+        mp = build_monitor_lift_plate().translate((0, 0, 30))
+        show_object(mp, name="Monitor Lift Plate",
+                    options={"color": (0.6, 0.8, 0.6, 0.8)})
+        kp = build_keyboard_lift_plate().translate((0, 0, 60))
+        show_object(kp, name="Keyboard Lift Plate",
+                    options={"color": (0.8, 0.6, 0.6, 0.8)})
+    except ImportError:
+        pass

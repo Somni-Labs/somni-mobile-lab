@@ -9,6 +9,7 @@ Asymmetric chamfer on knuckle ends for fool-proof assembly.
 Returns a CadQuery solid — caller unions it onto the page shell.
 """
 
+import os
 import cadquery as cq
 import math
 from designs.common.constants import (
@@ -138,13 +139,14 @@ def build_retaining_clip():
 
 
 # --- Standalone preview ---
-try:
-    from cq_server.ui import ui, show_object
-    knuckles = build_hinge_knuckles(50, gear_sector_index=2)
-    show_object(knuckles, name="Hinge Knuckles (sample)",
-                options={"color": (0.5, 0.5, 0.5, 0.9)})
-    clip = build_retaining_clip()
-    show_object(clip.translate((0, 0, 60)), name="Retaining C-Clip",
-                options={"color": (0.7, 0.7, 0.7, 0.9)})
-except ImportError:
-    pass
+if not os.environ.get('_CQ_ASSEMBLY'):
+    try:
+        from cq_server.ui import ui, show_object
+        knuckles = build_hinge_knuckles(50, gear_sector_index=2)
+        show_object(knuckles, name="Hinge Knuckles (sample)",
+                    options={"color": (0.5, 0.5, 0.5, 0.9)})
+        clip = build_retaining_clip()
+        show_object(clip.translate((0, 0, 60)), name="Retaining C-Clip",
+                    options={"color": (0.7, 0.7, 0.7, 0.9)})
+    except ImportError:
+        pass

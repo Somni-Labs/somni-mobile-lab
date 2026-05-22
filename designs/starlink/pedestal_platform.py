@@ -6,6 +6,7 @@ Connects to the linear actuator via a tilt hinge along one long edge.
 4 guide rod receptacles at corners for smooth vertical travel.
 """
 
+import os
 import cadquery as cq
 from designs.common.constants import (
     STARLINK_W, STARLINK_D,
@@ -79,10 +80,11 @@ def build_pedestal_platform():
 
 
 # --- Standalone preview ---
-try:
-    from cq_server.ui import ui, show_object
-    platform = build_pedestal_platform()
-    show_object(platform, name="Pedestal Platform",
-                options={"color": (0.3, 0.5, 0.7, 0.9)})
-except ImportError:
-    pass
+if not os.environ.get('_CQ_ASSEMBLY'):
+    try:
+        from cq_server.ui import ui, show_object
+        platform = build_pedestal_platform()
+        show_object(platform, name="Pedestal Platform",
+                    options={"color": (0.3, 0.5, 0.7, 0.9)})
+    except ImportError:
+        pass

@@ -8,6 +8,7 @@ raising a lift plate ~20mm.
 Reused 3x (laptop, monitor, keyboard) with different slot widths.
 """
 
+import os
 import cadquery as cq
 import math
 from designs.common.constants import (
@@ -99,13 +100,14 @@ def build_cam_housing(slot_w=LIFT_SLOT_W):
 
 
 # --- Standalone preview ---
-try:
-    from cq_server.ui import ui, show_object
-    cam = build_cam()
-    show_object(cam, name="Eccentric Cam",
-                options={"color": (0.7, 0.5, 0.2, 0.9)})
-    housing = build_cam_housing().translate((0, 50, 0))
-    show_object(housing, name="Cam Housing",
-                options={"color": (0.4, 0.4, 0.4, 0.8)})
-except ImportError:
-    pass
+if not os.environ.get('_CQ_ASSEMBLY'):
+    try:
+        from cq_server.ui import ui, show_object
+        cam = build_cam()
+        show_object(cam, name="Eccentric Cam",
+                    options={"color": (0.7, 0.5, 0.2, 0.9)})
+        housing = build_cam_housing().translate((0, 50, 0))
+        show_object(housing, name="Cam Housing",
+                    options={"color": (0.4, 0.4, 0.4, 0.8)})
+    except ImportError:
+        pass

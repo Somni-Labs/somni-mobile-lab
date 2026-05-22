@@ -6,6 +6,7 @@ Printed in clear/natural PETG.
 Parametric length — cut to match each channel run.
 """
 
+import os
 import cadquery as cq
 from designs.common.constants import (
     LED_CHANNEL_W, LED_CHANNEL_D, LED_DIFFUSER_SNAP,
@@ -44,10 +45,11 @@ def build_diffuser_strip(length, channel_w=LED_CHANNEL_W,
 
 
 # --- Standalone preview ---
-try:
-    from cq_server.ui import ui, show_object
-    sample = build_diffuser_strip(100)
-    show_object(sample, name="Diffuser Strip (100mm sample)",
-                options={"color": (0.9, 0.9, 0.95, 0.5)})
-except ImportError:
-    pass
+if not os.environ.get('_CQ_ASSEMBLY'):
+    try:
+        from cq_server.ui import ui, show_object
+        sample = build_diffuser_strip(100)
+        show_object(sample, name="Diffuser Strip (100mm sample)",
+                    options={"color": (0.9, 0.9, 0.95, 0.5)})
+    except ImportError:
+        pass

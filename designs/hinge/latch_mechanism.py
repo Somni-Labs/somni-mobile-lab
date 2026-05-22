@@ -13,6 +13,7 @@ Returns:
 All centered at origin; caller translates to final position.
 """
 
+import os
 import cadquery as cq
 from designs.common.constants import (
     SG90_W, SG90_D, SG90_H, SG90_FLANGE_W, SG90_FLANGE_H,
@@ -138,16 +139,17 @@ def build_latch_catch():
 
 
 # --- Standalone preview ---
-try:
-    from cq_server.ui import ui, show_object
-    housing = build_latch_housing()
-    show_object(housing, name="Latch Housing",
-                options={"color": (0.4, 0.4, 0.4, 0.9)})
-    hook = build_latch_hook().translate((0, 30, 0))
-    show_object(hook, name="Latch Hook",
-                options={"color": (0.8, 0.3, 0.3, 0.9)})
-    catch = build_latch_catch().translate((0, 60, 0))
-    show_object(catch, name="Latch Catch",
-                options={"color": (0.3, 0.3, 0.8, 0.9)})
-except ImportError:
-    pass
+if not os.environ.get('_CQ_ASSEMBLY'):
+    try:
+        from cq_server.ui import ui, show_object
+        housing = build_latch_housing()
+        show_object(housing, name="Latch Housing",
+                    options={"color": (0.4, 0.4, 0.4, 0.9)})
+        hook = build_latch_hook().translate((0, 30, 0))
+        show_object(hook, name="Latch Hook",
+                    options={"color": (0.8, 0.3, 0.3, 0.9)})
+        catch = build_latch_catch().translate((0, 60, 0))
+        show_object(catch, name="Latch Catch",
+                    options={"color": (0.3, 0.3, 0.8, 0.9)})
+    except ImportError:
+        pass

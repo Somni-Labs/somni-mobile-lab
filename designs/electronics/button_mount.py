@@ -5,6 +5,7 @@ Flush-mount housing for 12mm push button with LED ring.
 Mounts on the Page 2 spine wall next to the USB-C port.
 """
 
+import os
 import cadquery as cq
 from designs.common.constants import BUTTON_DIA, BUTTON_RECESS, WALL
 
@@ -41,10 +42,11 @@ def build_button_mount():
 
 
 # --- Standalone preview ---
-try:
-    from cq_server.ui import ui, show_object
-    btn = build_button_mount()
-    show_object(btn, name="Button Mount",
-                options={"color": (0.2, 0.2, 0.2, 0.9)})
-except ImportError:
-    pass
+if not os.environ.get('_CQ_ASSEMBLY'):
+    try:
+        from cq_server.ui import ui, show_object
+        btn = build_button_mount()
+        show_object(btn, name="Button Mount",
+                    options={"color": (0.2, 0.2, 0.2, 0.9)})
+    except ImportError:
+        pass
