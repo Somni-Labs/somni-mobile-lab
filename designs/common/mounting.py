@@ -8,6 +8,7 @@ sculpted shell builder, and pocket cutter.
 import cadquery as cq
 from designs.common.constants import (
     WALL, CORNER_R, TAPER, DIVIDER,
+    CHAMFER_SIZE,
     M3_CLEARANCE_DIA, M3_INSERT_DIA, M3_INSERT_DEPTH,
     MOUNT_BOSS_OD, MOUNT_BOSS_ALIGN_H,
     WIRE_CHANNEL_W, WIRE_CHANNEL_D,
@@ -18,10 +19,14 @@ from designs.common.constants import (
 )
 
 
-def build_sculpted_shell(width, depth, height, corner_r=CORNER_R, wall=WALL, taper=TAPER):
+def build_sculpted_shell(width, depth, height, corner_r=CORNER_R, wall=WALL,
+                         taper=TAPER, chamfer=CHAMFER_SIZE):
     """
-    Build a sculpted page shell — open-top box with large organic fillets
-    and a subtle taper (thicker center, thinner edges).
+    Build a chamfered slab page shell — open-top box with large organic fillets
+    on vertical edges and 45-degree chamfers on all horizontal edges.
+
+    The chamfer transforms the rectangular profile into a beveled slab.
+    Interior is flat-walled (chamfer is exterior only).
 
     Returns a CadQuery solid (shell with floor, no top).
     """
@@ -35,10 +40,23 @@ def build_sculpted_shell(width, depth, height, corner_r=CORNER_R, wall=WALL, tap
             outer = outer.edges("|Z").fillet(corner_r)
         except Exception:
             outer = outer.edges("|Z").fillet(corner_r / 2)
-    try:
-        outer = outer.edges(">Z").fillet(min(corner_r / 2, wall))
-    except Exception:
-        pass
+
+    if chamfer > 0:
+        try:
+            outer = outer.edges(">Z").chamfer(chamfer)
+        except Exception:
+            try:
+                outer = outer.edges(">Z").chamfer(chamfer * 0.6)
+            except Exception:
+                pass
+        try:
+            outer = outer.edges("<Z").chamfer(chamfer)
+        except Exception:
+            try:
+                outer = outer.edges("<Z").chamfer(chamfer * 0.6)
+            except Exception:
+                pass
+
     inner = (
         cq.Workplane("XY")
         .workplane(offset=wall)
