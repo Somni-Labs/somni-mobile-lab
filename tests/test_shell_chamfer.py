@@ -5,7 +5,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from designs.common.constants import WALL, CORNER_R, CHAMFER_SIZE, PANEL_GROOVE_DEPTH, LED_CHANNEL_W, LED_CHANNEL_D, RIDGE_H, RIM_BAND, RIM_STEP
-from designs.common.mounting import build_sculpted_shell, add_chamfer_led_channels, cut_armor_panels, add_ridge, add_side_ribs, add_logo_deboss
+from designs.common.mounting import build_sculpted_shell, add_chamfer_led_channels, cut_armor_panels, add_ridge, add_structural_ribs
 
 
 def test_chamfered_shell_builds_without_error():
@@ -103,26 +103,29 @@ def test_armor_panels_remove_material():
     assert vol_after < vol_before, "Armor panels should remove material from ridged surface"
 
 
-def test_side_ribs_add_material():
-    """Side ribs should add protruding material to the shell exterior."""
+def test_structural_ribs_add_material():
+    """Structural ribs should add protruding material to back and short sides."""
     shell = build_sculpted_shell(200, 150, 60)
     vol_before = shell.val().Volume()
+    result = add_structural_ribs(shell, 200, 150, 60)
+    vol_after = result.val().Volume()
+    assert vol_after > vol_before, "Structural ribs should add material"
+
+
+def test_structural_ribs_skip_front():
+    """Structural ribs should NOT add material on the front (+Y) face."""
+    shell = build_sculpted_shell(200, 150, 60)
     bb_before = shell.val().BoundingBox()
-    result = add_side_ribs(shell, 200, 150, 60)
-    vol_after = result.val().Volume()
+    result = add_structural_ribs(shell, 200, 150, 60)
     bb_after = result.val().BoundingBox()
-    assert vol_after > vol_before, "Side ribs should add material"
-    # Ribs should protrude beyond the shell envelope
-    assert bb_after.xlen >= bb_before.xlen, "Ribs should widen the X bounding box"
-
-
-def test_logo_deboss_removes_material():
-    """Logo deboss on front wall should cut material from the shell."""
-    shell = build_sculpted_shell(200, 150, 60)
-    vol_before = shell.val().Volume()
-    result = add_logo_deboss(shell, 200, 150, 60)
-    vol_after = result.val().Volume()
-    assert vol_after < vol_before, "Logo deboss should remove material"
+    # Back (-Y) should extend outward (ribs protrude)
+    assert bb_after.ymin < bb_before.ymin, (
+        f"Back face should extend: ymin before={bb_before.ymin:.1f}, after={bb_after.ymin:.1f}"
+    )
+    # Front (+Y) should NOT extend (no ribs on hero face)
+    assert abs(bb_after.ymax - bb_before.ymax) < 0.1, (
+        f"Front face should not extend: ymax before={bb_before.ymax:.1f}, after={bb_after.ymax:.1f}"
+    )
 
 
 def test_shell_has_rim_band():

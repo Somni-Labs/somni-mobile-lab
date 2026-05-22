@@ -100,42 +100,43 @@ def build_sculpted_shell(width, depth, height, corner_r=CORNER_R, wall=WALL,
     return outer
 
 
-def add_side_ribs(body, width, depth, height, chamfer=CHAMFER_SIZE,
-                  rib_w=STRUCT_RIB_W, rib_h=STRUCT_RIB_H,
-                  spacing=40, corner_r=CORNER_R):
+def add_structural_ribs(body, width, depth, height, chamfer=CHAMFER_SIZE,
+                        rib_w=STRUCT_RIB_W, rib_h=STRUCT_RIB_H,
+                        n_back=STRUCT_RIB_BACK_N, n_side=STRUCT_RIB_SIDE_N,
+                        corner_r=CORNER_R):
     """
-    Add bold vertical ribs on the exterior side walls of a shell.
+    Add bold vertical ribs on the back wall and short sides of a shell.
 
-    Ribs run vertically from the bottom chamfer zone to the top chamfer zone,
-    evenly spaced along the long sides (±Y faces) and short sides (±X faces).
-    Each rib is a rectangular extrusion chamfered on its top edge.
+    The front wall (+Y) is left clean for the hero face treatment.
+    Back wall (-Y) gets n_back evenly spaced ribs.
+    Short sides (±X) get n_side ribs each, centered to avoid hinge zones.
 
-    These break up the flat wall surfaces and give the case a distinctly
-    mechanical/exosuit appearance visible from any viewing angle.
+    Ribs run vertically from just above the bottom chamfer to just below
+    the top chamfer. Each rib is rectangular, protruding rib_h outward.
     """
     hw = width / 2
     hd = depth / 2
-    z_lo = chamfer + 2  # start above bottom chamfer
-    z_hi = height - chamfer - 2  # stop below top chamfer
-    rib_height = z_hi - z_lo
-    if rib_height < 5:
+    z_lo = chamfer + 2
+    z_hi = height - chamfer - 2
+    rib_z_height = z_hi - z_lo
+    if rib_z_height < 5:
         return body
 
-    # Ribs on long sides (±Y faces, running along X)
-    n_x = int((width - corner_r * 4) / spacing)
-    if n_x < 1:
-        n_x = 1
-    x_start = -(n_x - 1) * spacing / 2
-    for i in range(n_x):
-        x = x_start + i * spacing
-        for sign in [-1, 1]:
-            y = sign * hd
+    # Back wall (-Y): n_back ribs evenly spaced along X
+    if n_back > 0:
+        usable_x = width - corner_r * 4
+        if n_back == 1:
+            back_xs = [0]
+        else:
+            spacing = usable_x / (n_back - 1)
+            back_xs = [-(n_back - 1) * spacing / 2 + i * spacing for i in range(n_back)]
+        for x in back_xs:
             rib = (
                 cq.Workplane("XY")
                 .workplane(offset=z_lo)
-                .center(x, y + sign * rib_h / 2)
+                .center(x, -hd - rib_h / 2)
                 .rect(rib_w, rib_h)
-                .extrude(rib_height)
+                .extrude(rib_z_height)
             )
             try:
                 rib = rib.edges(">Z").chamfer(min(1.0, rib_h * 0.4))
@@ -143,27 +144,28 @@ def add_side_ribs(body, width, depth, height, chamfer=CHAMFER_SIZE,
                 pass
             body = body.union(rib)
 
-    # Ribs on short sides (±X faces, running along Y)
-    n_y = int((depth - corner_r * 4) / spacing)
-    if n_y < 1:
-        n_y = 1
-    y_start = -(n_y - 1) * spacing / 2
-    for i in range(n_y):
-        y = y_start + i * spacing
-        for sign in [-1, 1]:
-            x = sign * hw
-            rib = (
-                cq.Workplane("XY")
-                .workplane(offset=z_lo)
-                .center(x + sign * rib_h / 2, y)
-                .rect(rib_h, rib_w)
-                .extrude(rib_height)
-            )
-            try:
-                rib = rib.edges(">Z").chamfer(min(1.0, rib_h * 0.4))
-            except Exception:
-                pass
-            body = body.union(rib)
+    # Short sides (±X): n_side ribs each, centered along Y
+    if n_side > 0:
+        usable_y = depth - corner_r * 4
+        if n_side == 1:
+            side_ys = [0]
+        else:
+            spacing = usable_y / (n_side - 1)
+            side_ys = [-(n_side - 1) * spacing / 2 + i * spacing for i in range(n_side)]
+        for y in side_ys:
+            for sign in [-1, 1]:  # both ±X sides
+                rib = (
+                    cq.Workplane("XY")
+                    .workplane(offset=z_lo)
+                    .center(sign * (hw + rib_h / 2), y)
+                    .rect(rib_h, rib_w)
+                    .extrude(rib_z_height)
+                )
+                try:
+                    rib = rib.edges(">Z").chamfer(min(1.0, rib_h * 0.4))
+                except Exception:
+                    pass
+                body = body.union(rib)
 
     return body
 
