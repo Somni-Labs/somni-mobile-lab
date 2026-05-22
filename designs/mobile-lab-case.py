@@ -276,6 +276,72 @@ def build_carry_handle(handle_w=HANDLE_W, handle_h=HANDLE_H, handle_thick=HANDLE
     return handle
 
 
+def split_into_tiles(body, case_outer_w, case_outer_d, page_height):
+    """
+    Split a page body into left and right halves at X=0.
+    Each tile must fit the QIDI Q2 bed (275x295mm).
+    Returns (left_tile, right_tile).
+    """
+    margin = 10  # extra size for clean cut
+    half_w = case_outer_w / 2 + margin
+    h = page_height + margin * 2
+
+    # Left half: everything at X < 0
+    left_cutter = (
+        cq.Workplane("XY")
+        .workplane(offset=-margin)
+        .center(half_w / 2, 0)
+        .rect(half_w, case_outer_d + margin * 2)
+        .extrude(h)
+    )
+    right_tile = body.intersect(left_cutter)
+
+    # Right half: everything at X >= 0
+    right_cutter = (
+        cq.Workplane("XY")
+        .workplane(offset=-margin)
+        .center(-half_w / 2, 0)
+        .rect(half_w, case_outer_d + margin * 2)
+        .extrude(h)
+    )
+    left_tile = body.intersect(right_cutter)
+
+    return left_tile, right_tile
+
+
+def add_bolt_holes(body, case_outer_d, page_height, bolt_dia=3.0, insert_dia=4.2,
+                   is_left=True, n_bolts=5, wall=WALL):
+    """
+    Add M3 bolt holes along the split seam at X=0.
+    Left tiles get clearance holes (3.4mm), right tiles get heat-set insert holes (4.2mm).
+    Holes are along X=0, distributed evenly along Y, at mid-height.
+    """
+    clearance_r = (bolt_dia + 0.4) / 2   # 3.4mm clearance
+    insert_r = insert_dia / 2             # 4.2mm for heat-set insert
+
+    r = clearance_r if is_left else insert_r
+    hole_depth = wall + 2  # through the wall plus margin
+
+    # Distribute bolts evenly along Y
+    usable_d = case_outer_d - 30  # margin from edges
+    spacing = usable_d / (n_bolts - 1) if n_bolts > 1 else 0
+    y_start = -usable_d / 2
+
+    z_mid = page_height / 2
+
+    for i in range(n_bolts):
+        y = y_start + i * spacing
+        hole = (
+            cq.Workplane("YZ")
+            .center(y, z_mid)
+            .circle(r)
+            .extrude(hole_depth, both=True)
+        )
+        body = body.cut(hole)
+
+    return body
+
+
 # =============================================================================
 # PAGE 1 — BOTTOM (Power & Connectivity)
 # =============================================================================
@@ -443,8 +509,27 @@ page2 = page2.union(_handle)
 
 
 # =============================================================================
+# TILE SPLIT AND BOLT HOLES
+# =============================================================================
+# Split each page into left/right tiles at X=0 for QIDI Q2 bed.
+
+page1_left, page1_right = split_into_tiles(page1, CASE_OUTER_W, CASE_OUTER_D, _p1_h)
+page2_left, page2_right = split_into_tiles(page2, CASE_OUTER_W, CASE_OUTER_D, _p2_h)
+page3_left, page3_right = split_into_tiles(page3, CASE_OUTER_W, CASE_OUTER_D, _p3_h)
+
+# Add M3 bolt holes along the split seam
+page1_left = add_bolt_holes(page1_left, CASE_OUTER_D, _p1_h, is_left=True)
+page1_right = add_bolt_holes(page1_right, CASE_OUTER_D, _p1_h, is_left=False)
+page2_left = add_bolt_holes(page2_left, CASE_OUTER_D, _p2_h, is_left=True)
+page2_right = add_bolt_holes(page2_right, CASE_OUTER_D, _p2_h, is_left=False)
+page3_left = add_bolt_holes(page3_left, CASE_OUTER_D, _p3_h, is_left=True)
+page3_right = add_bolt_holes(page3_right, CASE_OUTER_D, _p3_h, is_left=False)
+
+
+# =============================================================================
 # CADQUERY-SERVER PREVIEW
 # =============================================================================
+# Show full pages (with hinges/latches/handle) in stacked assembly view
 show_object(page1, name="Page 1 - Bottom (Power)", options={"color": "steelblue", "alpha": 0.7})
 
 _p2_assembly_z = _p1_h + 2
@@ -454,3 +539,18 @@ show_object(page2_view, name="Page 2 - Middle (Screens)", options={"color": "dar
 _p3_assembly_z = _p2_assembly_z + _p2_h + 2
 page3_view = page3.translate((0, 0, _p3_assembly_z))
 show_object(page3_view, name="Page 3 - Top (Accessories)", options={"color": "lightsalmon", "alpha": 0.7})
+
+# Show tiles exploded to the side for print preview
+_tile_offset_y = CASE_OUTER_D + 50
+show_object(page1_left.translate((0, _tile_offset_y, 0)),
+    name="P1 Left Tile", options={"color": "steelblue", "alpha": 0.5})
+show_object(page1_right.translate((0, _tile_offset_y * 2, 0)),
+    name="P1 Right Tile", options={"color": "steelblue", "alpha": 0.5})
+show_object(page2_left.translate((0, _tile_offset_y, _p2_assembly_z)),
+    name="P2 Left Tile", options={"color": "darkseagreen", "alpha": 0.5})
+show_object(page2_right.translate((0, _tile_offset_y * 2, _p2_assembly_z)),
+    name="P2 Right Tile", options={"color": "darkseagreen", "alpha": 0.5})
+show_object(page3_left.translate((0, _tile_offset_y, _p3_assembly_z)),
+    name="P3 Left Tile", options={"color": "lightsalmon", "alpha": 0.5})
+show_object(page3_right.translate((0, _tile_offset_y * 2, _p3_assembly_z)),
+    name="P3 Right Tile", options={"color": "lightsalmon", "alpha": 0.5})
