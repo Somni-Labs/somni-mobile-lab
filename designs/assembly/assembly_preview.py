@@ -18,6 +18,9 @@ _repo_root = os.path.abspath(os.path.join(_this_dir, "..", ".."))
 if _repo_root not in sys.path:
     sys.path.insert(0, _repo_root)
 
+# Suppress subsystem standalone previews when importing as dependencies
+os.environ['_CQ_ASSEMBLY'] = '1'
+
 import cadquery as cq
 from cq_server.ui import ui, show_object
 
