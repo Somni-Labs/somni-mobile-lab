@@ -40,7 +40,7 @@ from designs.common.constants import (
 )
 from designs.common.mounting import (
     build_sculpted_shell, cut_pocket, add_mounting_boss,
-    add_ridge, add_chamfer_led_channels, add_structural_ribs, add_logo_deboss,
+    add_ridge, add_chamfer_led_channels, add_structural_ribs, build_hero_face,
 )
 
 try:
@@ -133,8 +133,8 @@ def build_page2():
     # --- Structural ribs (back + short sides, front left clean for hero face) ---
     shell = add_structural_ribs(shell, CASE_OUTER_W, CASE_OUTER_D, PAGE2_H)
 
-    # --- Logo deboss on front face ---
-    shell = add_logo_deboss(shell, CASE_OUTER_W, CASE_OUTER_D, PAGE2_H)
+    # --- Hero face (front wall armor plate treatment) ---
+    shell = build_hero_face(shell, CASE_OUTER_W, CASE_OUTER_D, PAGE2_H)
 
     return shell
 

@@ -47,7 +47,7 @@ from designs.common.constants import (
 from designs.common.mounting import (
     build_sculpted_shell, cut_pocket, add_mounting_boss,
     add_ridge, cut_led_channel, cut_armor_panels,
-    add_chamfer_led_channels, add_structural_ribs, add_logo_deboss,
+    add_chamfer_led_channels, add_structural_ribs, build_hero_face,
 )
 
 try:
@@ -157,8 +157,8 @@ def build_page3():
     # --- Structural ribs (back + short sides, front left clean for hero face) ---
     shell = add_structural_ribs(shell, CASE_OUTER_W, CASE_OUTER_D, PAGE3_H)
 
-    # --- Somni Labs logo deboss on front wall ---
-    shell = add_logo_deboss(shell, CASE_OUTER_W, CASE_OUTER_D, PAGE3_H)
+    # --- Hero face (front wall armor plate treatment) ---
+    shell = build_hero_face(shell, CASE_OUTER_W, CASE_OUTER_D, PAGE3_H)
 
     # --- Mounting bosses: latch servo housings (2x on +X front edge) ---
     latch_spacing = CASE_OUTER_D / 3
