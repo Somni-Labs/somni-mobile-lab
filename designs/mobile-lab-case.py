@@ -216,3 +216,77 @@ _stack_cx = 0
 _stack_cy = 0
 page2 = cut_pocket(page2, _stack_cx, _stack_cy,
     _stack_w, _stack_d, _stack_h, floor_z=WALL, corner_r=3)
+
+
+# =============================================================================
+# PAGE 3 — TOP / COVER (Accessories)
+# =============================================================================
+_p3_h = PAGE3_DEPTH + WALL
+
+page3 = build_page_shell(CASE_OUTER_W, CASE_OUTER_D, _p3_h)
+
+# Keyboard pocket (top, full width)
+_kb_cx = 0
+_kb_cy = CASE_INNER_D / 2 - DIVIDER - KB_D / 2
+page3 = cut_pocket(page3, _kb_cx, _kb_cy,
+    KB_W, KB_D, KB_H + FOAM_BASE, floor_z=WALL, corner_r=3)
+
+# Bottom row: Mudi 7, Mouse, Misc
+_bottom_row_cy_start = _kb_cy - KB_D / 2 - DIVIDER
+
+# Mudi 7 (bottom-left)
+_mudi_cx = -CASE_INNER_W / 2 + DIVIDER + MUDI_W / 2
+_mudi_cy = _bottom_row_cy_start - MUDI_D / 2
+page3 = cut_pocket(page3, _mudi_cx, _mudi_cy,
+    MUDI_W, MUDI_D, MUDI_H + FOAM_BASE, floor_z=WALL, corner_r=2)
+
+# Mouse (bottom-center)
+_mouse_cx = _mudi_cx + MUDI_W / 2 + DIVIDER + MOUSE_W / 2
+_mouse_cy = _mudi_cy
+page3 = cut_pocket(page3, _mouse_cx, _mouse_cy,
+    MOUSE_W, MOUSE_D, MOUSE_H + FOAM_BASE, floor_z=WALL, corner_r=2)
+
+# Misc pocket (bottom-right, remaining space for Flipper Zero + Charging Block)
+_misc_left = _mouse_cx + MOUSE_W / 2 + DIVIDER
+_misc_right = CASE_INNER_W / 2 - DIVIDER
+_misc_w = _misc_right - _misc_left
+_misc_cx = (_misc_left + _misc_right) / 2
+_misc_cy = _mudi_cy
+_misc_d = max(MUDI_D, MOUSE_D)
+page3 = cut_pocket(page3, _misc_cx, _misc_cy,
+    _misc_w, _misc_d, max(FLIPPER_H, CHARGER_H) + FOAM_BASE, floor_z=WALL, corner_r=2)
+
+# --- Somni Labs logo deboss on cover (top face of page 3) ---
+try:
+    _logo_depth = 1.0
+    logo = (
+        cq.Workplane("XY")
+        .workplane(offset=_p3_h)
+        .text("SOMNI", fontsize=30, distance=_logo_depth, combine=False,
+              halign="center", valign="center")
+        .translate((0, 0, -_logo_depth))
+    )
+    page3 = page3.cut(logo)
+except Exception:
+    # Fallback: simple rectangular deboss placeholder
+    logo_rect = (
+        cq.Workplane("XY")
+        .workplane(offset=_p3_h - 1.0)
+        .rect(80, 15)
+        .extrude(1.0 + 0.1)
+    )
+    page3 = page3.cut(logo_rect)
+
+
+# =============================================================================
+# CADQUERY-SERVER PREVIEW
+# =============================================================================
+show_object(page1, name="Page 1 - Bottom (Power)", options={"color": "steelblue", "alpha": 0.7})
+
+_p2_assembly_z = _p1_h + 2
+page2_view = page2.translate((0, 0, _p2_assembly_z))
+show_object(page2_view, name="Page 2 - Middle (Screens)", options={"color": "darkseagreen", "alpha": 0.7})
+
+_p3_assembly_z = _p2_assembly_z + _p2_h + 2
+page3_view = page3.translate((0, 0, _p3_assembly_z))
+show_object(page3_view, name="Page 3 - Top (Accessories)", options={"color": "lightsalmon", "alpha": 0.7})
