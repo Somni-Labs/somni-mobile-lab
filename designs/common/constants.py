@@ -19,9 +19,9 @@ WALL = 3               # outer shell wall thickness
 DIVIDER = 2            # internal divider wall thickness
 CORNER_R = 15          # outer corner fillet radius (organic, up from 5mm in V1)
 TAPER = 3              # shell taper per side (thicker center, thinner edges)
-CHAMFER_SIZE = 18      # 45-degree edge chamfer (dramatic bevel on 412mm case)
-RIM_BAND = 12          # solid rim band at top — thick enough for chamfer to read
-RIM_STEP = 5           # inward step below rim (layered armor look)
+CHAMFER_SIZE = 15      # 45-degree edge chamfer (auto-capped to 20% of page height)
+RIM_BAND = 10          # solid rim band at top — thick enough for chamfer to read
+RIM_STEP = 4           # inward step below rim (layered armor look)
 SIDE_TAPER_ANGLE = 3   # degrees of inward taper on side walls (0=vertical)
 PANEL_GROOVE_DEPTH = 1.5  # armor panel recess below ridge surface
 PANEL_GROOVE_WIDTH = 3    # groove cut width between panels (wider for visibility)

@@ -44,6 +44,13 @@ def build_sculpted_shell(width, depth, height, corner_r=CORNER_R, wall=WALL,
 
     Returns a CadQuery solid (shell with floor, no top).
     """
+    # Auto-cap chamfer to 20% of page height so shorter pages aren't eaten alive.
+    # Also cap rim_band proportionally.
+    max_chamfer = height * 0.20
+    chamfer = min(chamfer, max_chamfer)
+    max_rim = height * 0.15
+    rim_band = min(rim_band, max_rim)
+
     # Step 1: Build the outer form — full solid box
     outer = (
         cq.Workplane("XY")
@@ -116,6 +123,7 @@ def add_structural_ribs(body, width, depth, height, chamfer=CHAMFER_SIZE,
     """
     hw = width / 2
     hd = depth / 2
+    chamfer = min(chamfer, height * 0.20)  # match shell auto-cap
     z_lo = chamfer
     z_hi = height - chamfer
     rib_z_height = z_hi - z_lo
@@ -234,6 +242,7 @@ def build_hero_face(body, width, depth, height, wall=WALL, chamfer=CHAMFER_SIZE,
     """
     hd = depth / 2
     face_y = hd  # outer surface of front wall
+    chamfer = min(chamfer, height * 0.20)  # match shell auto-cap
 
     # Usable Z range on the front face (between chamfer zones).
     # The chamfer itself defines the safe boundary — no extra margin needed
