@@ -302,8 +302,8 @@ def _build_letter_solid(letter, letter_w, letter_h, stroke):
         parts.append(_rect(0, hh - s/2, letter_w, s))       # top bar
         parts.append(_rect(0, 0, letter_w, s))              # middle bar
         parts.append(_rect(0, -hh + s/2, letter_w, s))      # bottom bar
-        parts.append(_rect(hw - s/2, hh/4, s, hh/2))       # right top
-        parts.append(_rect(hw - s/2, -hh/4, s, hh/2))      # right bottom
+        parts.append(_rect(hw - s/2, hh/4, s, hh))          # right top (full height to connect bars)
+        parts.append(_rect(hw - s/2, -hh/4, s, hh))         # right bottom (full height to connect bars)
 
     # Union all parts
     result = parts[0]
@@ -475,8 +475,8 @@ def _get_letter_rects(letter, letter_w, letter_h, stroke):
         rects.append((0, hh - s/2, letter_w, s))           # top bar
         rects.append((0, 0, letter_w, s))                   # middle bar
         rects.append((0, -hh + s/2, letter_w, s))          # bottom bar
-        rects.append((hw - s/2, hh/4, s, hh/2 - s/2))     # right top
-        rects.append((hw - s/2, -hh/4, s, hh/2 - s/2))    # right bottom
+        rects.append((hw - s/2, hh/4, s, hh))              # right top (connects bars)
+        rects.append((hw - s/2, -hh/4, s, hh))             # right bottom (connects bars)
 
     return rects
 
