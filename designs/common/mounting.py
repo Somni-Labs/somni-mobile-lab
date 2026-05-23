@@ -384,10 +384,11 @@ def build_hero_face(body, width, depth, height, wall=WALL, chamfer=CHAMFER_SIZE,
         if i == 5:
             x_cursor += space_w
 
-        # Get the rectangles that make up this letter
+        # Get the rectangles that make up this letter.
+        # Mirror X so text reads correctly from outside (+Y looking in).
         rects = _get_letter_rects(ch, letter_w, letter_h, stroke)
         for (rcx, rcz, rw, rh) in rects:
-            abs_cx = x_cursor + letter_w / 2 + rcx
+            abs_cx = -(x_cursor + letter_w / 2 + rcx)
             abs_cz = face_z_center + rcz
             cutter = (
                 cq.Workplane("XZ")
