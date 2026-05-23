@@ -268,19 +268,21 @@ def _build_letter_solid(letter, letter_w, letter_h, stroke):
         parts.append(_rect(hw - s/2, 0, s, letter_h))       # right
 
     elif letter == 'M':
-        # Two vertical legs + two inner diagonals (simplified as center bars)
-        parts.append(_rect(-hw + s/2, 0, s, letter_h))      # left leg
-        parts.append(_rect(hw - s/2, 0, s, letter_h))       # right leg
-        parts.append(_rect(-hw/2, hh/4, s, hh))             # left inner
-        parts.append(_rect(hw/2, hh/4, s, hh))              # right inner
+        # M: two outer legs, two inner legs spread wide, top bar connecting all
+        # Key: big gaps between the legs at the bottom
+        parts.append(_rect(-hw + s/2, 0, s, letter_h))      # left outer leg
+        parts.append(_rect(hw - s/2, 0, s, letter_h))       # right outer leg
+        parts.append(_rect(-hw * 0.35, hh * 0.3, s, hh * 1.1))  # left inner (starts high, shorter)
+        parts.append(_rect(hw * 0.35, hh * 0.3, s, hh * 1.1))   # right inner (starts high, shorter)
         parts.append(_rect(0, hh - s/2, letter_w, s))       # top bar
 
     elif letter == 'N':
+        # N: two legs with a thin diagonal bar — keep open space visible
         parts.append(_rect(-hw + s/2, 0, s, letter_h))      # left leg
         parts.append(_rect(hw - s/2, 0, s, letter_h))       # right leg
-        parts.append(_rect(0, 0, s * 1.5, letter_h * 0.7))  # center diagonal (simplified)
-        parts.append(_rect(0, hh - s/2, letter_w, s))       # top bar
-        parts.append(_rect(0, -hh + s/2, letter_w, s))      # bottom bar
+        # Diagonal simplified as a narrow angled bar from top-left to bottom-right
+        parts.append(_rect(-hw * 0.2, hh * 0.3, s, hh * 0.5))   # upper-left piece
+        parts.append(_rect(hw * 0.2, -hh * 0.3, s, hh * 0.5))   # lower-right piece
 
     elif letter == 'I':
         parts.append(_rect(0, 0, s, letter_h))              # vertical bar
@@ -292,10 +294,11 @@ def _build_letter_solid(letter, letter_w, letter_h, stroke):
         parts.append(_rect(0, -hh + s/2, letter_w, s))      # bottom bar
 
     elif letter == 'A':
+        # A: two legs, top bar, crossbar at ⅓ height — big counter gap above
         parts.append(_rect(-hw + s/2, 0, s, letter_h))      # left leg
         parts.append(_rect(hw - s/2, 0, s, letter_h))       # right leg
         parts.append(_rect(0, hh - s/2, letter_w, s))       # top bar
-        parts.append(_rect(0, 0, letter_w - s, s))          # crossbar
+        parts.append(_rect(0, -hh/3, letter_w - s * 2, s))  # crossbar at ⅓ height
 
     elif letter == 'B':
         parts.append(_rect(-hw + s/2, 0, s, letter_h))      # left vertical
@@ -444,16 +447,21 @@ def _get_letter_rects(letter, letter_w, letter_h, stroke):
         rects.append((hw - s/2, 0, s, letter_h))           # right
 
     elif letter == 'M':
-        rects.append((-hw + s/2, 0, s, letter_h))          # left leg
-        rects.append((hw - s/2, 0, s, letter_h))           # right leg
-        rects.append((-hw/2 + s/4, hh/4, s, hh))           # left inner
-        rects.append((hw/2 - s/4, hh/4, s, hh))            # right inner
-        rects.append((0, hh - s/2, letter_w, s))           # top bar
+        # M: two outer legs, two inner legs spread wide, top bar
+        # Inner legs start higher and are shorter — big gaps at bottom
+        rects.append((-hw + s/2, 0, s, letter_h))                   # left outer leg
+        rects.append((hw - s/2, 0, s, letter_h))                    # right outer leg
+        rects.append((-hw * 0.35, hh * 0.3, s, hh * 1.1))          # left inner (high)
+        rects.append((hw * 0.35, hh * 0.3, s, hh * 1.1))           # right inner (high)
+        rects.append((0, hh - s/2, letter_w, s))                    # top bar
 
     elif letter == 'N':
-        rects.append((-hw + s/2, 0, s, letter_h))          # left leg
-        rects.append((hw - s/2, 0, s, letter_h))           # right leg
-        rects.append((0, 0, s * 1.5, letter_h * 0.7))      # diagonal (simplified)
+        # N: two legs with diagonal suggested by two offset bars
+        # Open space visible between them
+        rects.append((-hw + s/2, 0, s, letter_h))                   # left leg
+        rects.append((hw - s/2, 0, s, letter_h))                    # right leg
+        rects.append((-hw * 0.2, hh * 0.3, s, hh * 0.5))           # upper-left piece
+        rects.append((hw * 0.2, -hh * 0.3, s, hh * 0.5))           # lower-right piece
 
     elif letter == 'I':
         rects.append((0, 0, s, letter_h))                  # vertical bar
@@ -465,10 +473,11 @@ def _get_letter_rects(letter, letter_w, letter_h, stroke):
         rects.append((0, -hh + s/2, letter_w, s))          # bottom bar
 
     elif letter == 'A':
-        rects.append((-hw + s/2, 0, s, letter_h))          # left leg
-        rects.append((hw - s/2, 0, s, letter_h))           # right leg
-        rects.append((0, hh - s/2, letter_w, s))           # top bar
-        rects.append((0, s/2, letter_w - s * 2, s))        # crossbar
+        # A: two legs, top bar, crossbar low (⅓ up) so counter gap is prominent
+        rects.append((-hw + s/2, 0, s, letter_h))                   # left leg
+        rects.append((hw - s/2, 0, s, letter_h))                    # right leg
+        rects.append((0, hh - s/2, letter_w, s))                    # top bar
+        rects.append((0, -hh/3, letter_w - s * 2, s))               # crossbar at ⅓ height
 
     elif letter == 'B':
         rects.append((-hw + s/2, 0, s, letter_h))          # left vertical
