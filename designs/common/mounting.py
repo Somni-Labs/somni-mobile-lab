@@ -6,6 +6,7 @@ sculpted shell builder, side ribs, and pocket cutter.
 """
 
 import math
+import os
 import cadquery as cq
 from designs.common.constants import (
     WALL, CORNER_R, TAPER, DIVIDER,
@@ -315,6 +316,12 @@ def _build_letter_solid(letter, letter_w, letter_h, stroke):
     return result
 
 
+def _font_path():
+    """Resolve the bundled DejaVu Sans Bold font path."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(here, "fonts", "DejaVuSans-Bold.ttf")
+
+
 def build_hero_face(body, width, depth, height, wall=WALL, chamfer=CHAMFER_SIZE,
                     plate_w=HERO_PLATE_W, plate_h=HERO_PLATE_H,
                     plate_proud=HERO_PLATE_PROUD, plate_recess=HERO_PLATE_RECESS,
@@ -325,7 +332,8 @@ def build_hero_face(body, width, depth, height, wall=WALL, chamfer=CHAMFER_SIZE,
 
     Features:
     1. "SOMNI LABS" cut all the way THROUGH the front wall as letter-shaped
-       holes — visible from any angle, backlit by LED channel behind
+       holes using a real font (DejaVu Sans Bold) — proper M/N diagonals,
+       visible from any angle, backlit by LED channel behind
     2. LED channel on the inside of the front wall behind the text cutout
        to illuminate the letters from behind
     3. Structural ribs are handled separately by add_structural_ribs()
@@ -350,20 +358,75 @@ def build_hero_face(body, width, depth, height, wall=WALL, chamfer=CHAMFER_SIZE,
     )
     body = body.union(logo_plate)
 
-    # --- 2. Letter sizing ---
+    # --- 2. Text sizing ---
     # Letters should be BIG — at least 15mm tall to be visible on a 412mm case.
-    # Scale to 45% of available face height.
+    font_size = min(face_z_extent * 0.45, 30)
+    font_size = max(font_size, 15)  # minimum 15mm
+
+    # --- 3. Build text cutter using real font ---
+    # CadQuery text() on XZ plane extrudes in -Y direction.
+    # We mirror X (halve=True not available, so we negate X after) so the text
+    # reads correctly from the +Y outside looking in.
+    cut_through_depth = wall + plate_proud + 2  # through plate + wall
+
+    font_file = _font_path()
+    text_kwargs = {}
+    if os.path.isfile(font_file):
+        text_kwargs["fontPath"] = font_file
+        text_kwargs["font"] = "DejaVu Sans"
+
+    try:
+        # Build text solid on XZ plane centered at origin
+        text_solid = (
+            cq.Workplane("XZ")
+            .center(0, face_z_center)
+            .text("SOMNI LABS", font_size, cut_through_depth,
+                  kind="bold", **text_kwargs)
+        )
+        # Mirror X so text reads correctly from outside (+Y)
+        text_solid = text_solid.mirror("YZ")
+        # Position: start just outside the plate and cut inward
+        text_solid = text_solid.translate((0, face_y + plate_proud + 0.01, 0))
+        body = body.cut(text_solid)
+
+        # Estimate total text width for LED channel sizing
+        text_bb = text_solid.val().BoundingBox()
+        total_text_w = text_bb.xlen
+    except Exception:
+        # Fallback: use block letter rectangles if text() fails
+        body, total_text_w = _cut_block_letters_on_body(
+            body, face_z_center, face_z_extent, face_y,
+            plate_proud, plate_w, wall,
+        )
+
+    # --- 4. LED channel behind the text (inside of front wall) ---
+    # Shallow channel for LED strip to backlight the letter cutouts
+    led_channel_w = total_text_w + 20
+    led_channel_h = font_size + 10
+    led_depth = LED_CHANNEL_D
+    led_channel = (
+        cq.Workplane("XZ")
+        .center(0, face_z_center)
+        .rect(led_channel_w, led_channel_h)
+        .extrude(led_depth)
+        .translate((0, face_y - wall + 0.01, 0))
+    )
+    body = body.cut(led_channel)
+
+    return body
+
+
+def _cut_block_letters_on_body(body, face_z_center, face_z_extent, face_y,
+                                plate_proud, plate_w, wall):
+    """Fallback: cut SOMNI LABS as block-letter rectangles through the wall."""
     letter_h = min(face_z_extent * 0.45, 30)
-    letter_h = max(letter_h, 15)  # minimum 15mm
+    letter_h = max(letter_h, 15)
     letter_w = letter_h * 0.65
-    stroke = max(letter_h * 0.25, 3.0)  # thick strokes for printability + visibility
-    gap = letter_h * 0.3  # gap between letters
-    space_w = letter_h * 0.5  # space between words
+    stroke = max(letter_h * 0.25, 3.0)
+    gap = letter_h * 0.3
+    space_w = letter_h * 0.5
 
-    # Total width of "SOMNI LABS" = 9 letters + 8 gaps + 1 space
     total_text_w = 9 * letter_w + 8 * gap + space_w
-
-    # If text is wider than the plate, scale letters down
     max_text_w = plate_w * 0.9
     if total_text_w > max_text_w:
         scale = max_text_w / total_text_w
@@ -374,21 +437,13 @@ def build_hero_face(body, width, depth, height, wall=WALL, chamfer=CHAMFER_SIZE,
         space_w *= scale
         total_text_w = max_text_w
 
-    # --- 3. Cut each letter through the plate AND wall ---
-    # The cut goes from the outer surface of the plate all the way through
-    # to the interior. This creates actual holes you can see light through.
-    cut_through_depth = wall + plate_proud + 2  # through plate + wall
-
+    cut_through_depth = wall + plate_proud + 2
     text = "SOMNILABS"
     x_cursor = -total_text_w / 2
 
     for i, ch in enumerate(text):
-        # Add space between SOMNI and LABS
         if i == 5:
             x_cursor += space_w
-
-        # Get the rectangles that make up this letter.
-        # Mirror X so text reads correctly from outside (+Y looking in).
         rects = _get_letter_rects(ch, letter_w, letter_h, stroke)
         for (rcx, rcz, rw, rh) in rects:
             abs_cx = -(x_cursor + letter_w / 2 + rcx)
@@ -401,24 +456,9 @@ def build_hero_face(body, width, depth, height, wall=WALL, chamfer=CHAMFER_SIZE,
                 .translate((0, face_y + plate_proud + 0.01, 0))
             )
             body = body.cut(cutter)
-
         x_cursor += letter_w + gap
 
-    # --- 4. LED channel behind the text (inside of front wall) ---
-    # Shallow channel for LED strip to backlight the letter cutouts
-    led_channel_w = total_text_w + 20
-    led_channel_h = letter_h + 10
-    led_depth = LED_CHANNEL_D
-    led_channel = (
-        cq.Workplane("XZ")
-        .center(0, face_z_center)
-        .rect(led_channel_w, led_channel_h)
-        .extrude(led_depth)
-        .translate((0, face_y - wall + 0.01, 0))
-    )
-    body = body.cut(led_channel)
-
-    return body
+    return body, total_text_w
 
 
 def _get_letter_rects(letter, letter_w, letter_h, stroke):
