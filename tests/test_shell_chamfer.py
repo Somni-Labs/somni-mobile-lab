@@ -185,14 +185,19 @@ def test_hero_face_builds_without_error():
     assert result is not None
 
 
-def test_hero_face_adds_material():
-    """Hero face should add net material (raised logo plate protrudes 3mm)."""
+def test_hero_face_modifies_geometry():
+    """Hero face should significantly change geometry (plate + letter cutouts)."""
     shell = build_sculpted_shell(200, 150, 60)
     vol_before = shell.val().Volume()
+    faces_before = len(shell.val().Faces())
     result = build_hero_face(shell, 200, 150, 60)
     vol_after = result.val().Volume()
-    assert vol_after > vol_before, (
-        f"Hero face should add net material: before={vol_before:.0f}, after={vol_after:.0f}"
+    faces_after = len(result.val().Faces())
+    assert vol_after != vol_before, (
+        f"Hero face should change volume: before={vol_before:.0f}, after={vol_after:.0f}"
+    )
+    assert faces_after > faces_before + 10, (
+        f"Hero face should add many faces (letter cuts): before={faces_before}, after={faces_after}"
     )
 
 

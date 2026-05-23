@@ -225,22 +225,107 @@ def _build_grid_panel(panel_w, panel_h, grid_size=HEX_SIZE, grid_wall=HEX_WALL,
     return result
 
 
+def _build_letter_solid(letter, letter_w, letter_h, stroke):
+    """
+    Build a single block letter as a 2D CadQuery Wire on the XZ plane.
+
+    Each letter is constructed from rectangular blocks (union of rects).
+    Returns a CadQuery Workplane solid extruded 1mm in Y, centered at origin.
+    The caller scales/positions it.
+    """
+    parts = []
+
+    def _rect(cx, cz, w, h):
+        """Create a rectangle solid centered at (cx, cz) on XZ plane."""
+        return (
+            cq.Workplane("XZ")
+            .center(cx, cz)
+            .rect(w, h)
+            .extrude(1)
+        )
+
+    hw = letter_w / 2
+    hh = letter_h / 2
+    s = stroke
+
+    if letter == 'S':
+        # Top bar
+        parts.append(_rect(0, hh - s/2, letter_w, s))
+        # Middle bar
+        parts.append(_rect(0, 0, letter_w, s))
+        # Bottom bar
+        parts.append(_rect(0, -hh + s/2, letter_w, s))
+        # Left top leg
+        parts.append(_rect(-hw + s/2, hh/2, s, hh))
+        # Right bottom leg
+        parts.append(_rect(hw - s/2, -hh/2, s, hh))
+
+    elif letter == 'O':
+        # Four sides of the O
+        parts.append(_rect(0, hh - s/2, letter_w, s))       # top
+        parts.append(_rect(0, -hh + s/2, letter_w, s))      # bottom
+        parts.append(_rect(-hw + s/2, 0, s, letter_h))      # left
+        parts.append(_rect(hw - s/2, 0, s, letter_h))       # right
+
+    elif letter == 'M':
+        # Two vertical legs + two inner diagonals (simplified as center bars)
+        parts.append(_rect(-hw + s/2, 0, s, letter_h))      # left leg
+        parts.append(_rect(hw - s/2, 0, s, letter_h))       # right leg
+        parts.append(_rect(-hw/2, hh/4, s, hh))             # left inner
+        parts.append(_rect(hw/2, hh/4, s, hh))              # right inner
+        parts.append(_rect(0, hh - s/2, letter_w, s))       # top bar
+
+    elif letter == 'N':
+        parts.append(_rect(-hw + s/2, 0, s, letter_h))      # left leg
+        parts.append(_rect(hw - s/2, 0, s, letter_h))       # right leg
+        parts.append(_rect(0, 0, s * 1.5, letter_h * 0.7))  # center diagonal (simplified)
+        parts.append(_rect(0, hh - s/2, letter_w, s))       # top bar
+        parts.append(_rect(0, -hh + s/2, letter_w, s))      # bottom bar
+
+    elif letter == 'I':
+        parts.append(_rect(0, 0, s, letter_h))              # vertical bar
+        parts.append(_rect(0, hh - s/2, letter_w * 0.6, s)) # top serif
+        parts.append(_rect(0, -hh + s/2, letter_w * 0.6, s))# bottom serif
+
+    elif letter == 'L':
+        parts.append(_rect(-hw + s/2, 0, s, letter_h))      # vertical bar
+        parts.append(_rect(0, -hh + s/2, letter_w, s))      # bottom bar
+
+    elif letter == 'A':
+        parts.append(_rect(-hw + s/2, 0, s, letter_h))      # left leg
+        parts.append(_rect(hw - s/2, 0, s, letter_h))       # right leg
+        parts.append(_rect(0, hh - s/2, letter_w, s))       # top bar
+        parts.append(_rect(0, 0, letter_w - s, s))          # crossbar
+
+    elif letter == 'B':
+        parts.append(_rect(-hw + s/2, 0, s, letter_h))      # left vertical
+        parts.append(_rect(0, hh - s/2, letter_w, s))       # top bar
+        parts.append(_rect(0, 0, letter_w, s))              # middle bar
+        parts.append(_rect(0, -hh + s/2, letter_w, s))      # bottom bar
+        parts.append(_rect(hw - s/2, hh/4, s, hh/2))       # right top
+        parts.append(_rect(hw - s/2, -hh/4, s, hh/2))      # right bottom
+
+    # Union all parts
+    result = parts[0]
+    for p in parts[1:]:
+        result = result.union(p)
+    return result
+
+
 def build_hero_face(body, width, depth, height, wall=WALL, chamfer=CHAMFER_SIZE,
                     plate_w=HERO_PLATE_W, plate_h=HERO_PLATE_H,
                     plate_proud=HERO_PLATE_PROUD, plate_recess=HERO_PLATE_RECESS,
                     hex_panel_recess=HEX_PANEL_RECESS,
                     groove_w=FRAME_GROOVE_W, groove_d=FRAME_GROOVE_D):
     """
-    Build the full hero face treatment on the front wall (+Y face).
+    Build the hero face on the front wall (+Y face).
 
-    Designed to be unmistakably visible in cadquery-server's 3D viewer:
-    1. Large raised center plate that breaks the silhouette (protrudes outward)
-    2. "SOMNI LABS" text cut THROUGH the plate as window cutouts
-    3. Angular accent cuts at top/bottom edges of the plate
-    4. Ventilation-style horizontal slot array above and below the plate
-
-    The text and slots are through-cuts, which show as clearly distinct
-    geometry in any renderer regardless of lighting/shading.
+    Features:
+    1. "SOMNI LABS" cut all the way THROUGH the front wall as letter-shaped
+       holes — visible from any angle, backlit by LED channel behind
+    2. LED channel on the inside of the front wall behind the text cutout
+       to illuminate the letters from behind
+    3. Structural ribs are handled separately by add_structural_ribs()
     """
     hd = depth / 2
     face_y = hd  # outer surface of front wall
@@ -251,9 +336,8 @@ def build_hero_face(body, width, depth, height, wall=WALL, chamfer=CHAMFER_SIZE,
     face_z_center = (z_lo + z_hi) / 2
     face_z_extent = z_hi - z_lo
 
-    effective_plate_h = min(plate_h, face_z_extent * 0.55)
-
-    # --- 1. Large raised plate — breaks the case silhouette ---
+    # --- 1. Raised plate on front wall (breaks silhouette) ---
+    effective_plate_h = min(plate_h, face_z_extent * 0.65)
     logo_plate = (
         cq.Workplane("XZ")
         .center(0, face_z_center)
@@ -263,175 +347,137 @@ def build_hero_face(body, width, depth, height, wall=WALL, chamfer=CHAMFER_SIZE,
     )
     body = body.union(logo_plate)
 
-    # --- 2. "SOMNI LABS" through-cut text ---
-    # CadQuery text() requires fontconfig in the container, which is missing.
-    # Instead, build geometric block letters that are unmistakable.
-    # Each letter is a combination of rectangles cut through the plate.
-    #
-    # We cut windows through the raised plate so the recessed wall surface
-    # behind shows through — creating visible letter shapes.
-    cut_depth = plate_proud + 1  # cut all the way through the plate
-    cut_y = face_y + plate_proud + 0.01  # start from outer surface
+    # --- 2. Letter sizing ---
+    # Letters should be BIG — at least 15mm tall to be visible on a 412mm case.
+    # Scale to 45% of available face height.
+    letter_h = min(face_z_extent * 0.45, 30)
+    letter_h = max(letter_h, 15)  # minimum 15mm
+    letter_w = letter_h * 0.65
+    stroke = max(letter_h * 0.25, 3.0)  # thick strokes for printability + visibility
+    gap = letter_h * 0.3  # gap between letters
+    space_w = letter_h * 0.5  # space between words
 
-    # Letter sizing — scale to plate dimensions
-    letter_h = min(effective_plate_h * 0.35, 14)  # letter height
-    letter_w = letter_h * 0.6  # letter width
-    stroke = max(letter_h * 0.22, 2.0)  # stroke thickness
-    gap = letter_h * 0.25  # gap between letters
-    space_w = letter_h * 0.4  # space between SOMNI and LABS
+    # Total width of "SOMNI LABS" = 9 letters + 8 gaps + 1 space
+    total_text_w = 9 * letter_w + 8 * gap + space_w
 
-    # Total text width: S-O-M-N-I [space] L-A-B-S = 9 letters + 1 space
-    total_w = 9 * (letter_w + gap) - gap + space_w
-    text_x_start = -total_w / 2
+    # If text is wider than the plate, scale letters down
+    max_text_w = plate_w * 0.9
+    if total_text_w > max_text_w:
+        scale = max_text_w / total_text_w
+        letter_h *= scale
+        letter_w *= scale
+        stroke *= scale
+        gap *= scale
+        space_w *= scale
+        total_text_w = max_text_w
 
-    def _cut_rect(body, cx, cz, w, h):
-        """Cut a rectangle through the plate at the given center."""
-        cut = (
-            cq.Workplane("XZ")
-            .center(cx, cz)
-            .rect(w, h)
-            .extrude(cut_depth)
-            .translate((0, cut_y, 0))
-        )
-        return body.cut(cut)
+    # --- 3. Cut each letter through the plate AND wall ---
+    # The cut goes from the outer surface of the plate all the way through
+    # to the interior. This creates actual holes you can see light through.
+    cut_through_depth = wall + plate_proud + 2  # through plate + wall
 
-    # Build each letter as cutouts in the plate.
-    # Letters are made by cutting away the NEGATIVE space (the openings).
-    # This creates block letters where the remaining plate material IS the letter.
-    x = text_x_start
-    text_z = face_z_center  # center of text vertically on plate
+    text = "SOMNILABS"
+    x_cursor = -total_text_w / 2
 
-    # --- Letter definitions ---
-    # Each letter cuts rectangular holes to form the letter shape.
-    # We cut the COUNTER (inside) of each letter.
+    for i, ch in enumerate(text):
+        # Add space between SOMNI and LABS
+        if i == 5:
+            x_cursor += space_w
 
-    def _letter_S(body, cx, cz):
-        """S = three horizontal bars with alternating side openings."""
-        # Top-right opening
-        body = _cut_rect(body, cx + letter_w * 0.15, cz + letter_h * 0.25,
-                         letter_w * 0.5, letter_h * 0.18)
-        # Bottom-left opening
-        body = _cut_rect(body, cx - letter_w * 0.15, cz - letter_h * 0.25,
-                         letter_w * 0.5, letter_h * 0.18)
-        return body
+        # Get the rectangles that make up this letter
+        rects = _get_letter_rects(ch, letter_w, letter_h, stroke)
+        for (rcx, rcz, rw, rh) in rects:
+            abs_cx = x_cursor + letter_w / 2 + rcx
+            abs_cz = face_z_center + rcz
+            cutter = (
+                cq.Workplane("XZ")
+                .center(abs_cx, abs_cz)
+                .rect(rw, rh)
+                .extrude(cut_through_depth)
+                .translate((0, face_y + plate_proud + 0.01, 0))
+            )
+            body = body.cut(cutter)
 
-    def _letter_O(body, cx, cz):
-        """O = rectangle with center cutout."""
-        body = _cut_rect(body, cx, cz,
-                         letter_w - stroke * 2, letter_h - stroke * 2)
-        return body
+        x_cursor += letter_w + gap
 
-    def _letter_M(body, cx, cz):
-        """M = two cutouts at bottom leaving legs and center V."""
-        # Left bottom window
-        body = _cut_rect(body, cx - letter_w * 0.2, cz - letter_h * 0.15,
-                         letter_w * 0.22, letter_h * 0.5)
-        # Right bottom window
-        body = _cut_rect(body, cx + letter_w * 0.2, cz - letter_h * 0.15,
-                         letter_w * 0.22, letter_h * 0.5)
-        return body
-
-    def _letter_N(body, cx, cz):
-        """N = two vertical legs with a diagonal (simplified as two windows)."""
-        # Center window (leaving two legs and connecting bar)
-        body = _cut_rect(body, cx, cz,
-                         letter_w - stroke * 2.5, letter_h * 0.35)
-        return body
-
-    def _letter_I(body, cx, cz):
-        """I = thin vertical bar (no cutouts needed — just a narrow block)."""
-        # Cut away sides to leave thin center bar
-        side_cut_w = (letter_w - stroke * 1.5) / 2
-        body = _cut_rect(body, cx - letter_w / 2 + side_cut_w / 2, cz,
-                         side_cut_w, letter_h * 0.65)
-        body = _cut_rect(body, cx + letter_w / 2 - side_cut_w / 2, cz,
-                         side_cut_w, letter_h * 0.65)
-        return body
-
-    def _letter_L(body, cx, cz):
-        """L = vertical bar with bottom shelf (cut top-right window)."""
-        body = _cut_rect(body, cx + letter_w * 0.15, cz + letter_h * 0.1,
-                         letter_w * 0.55, letter_h * 0.6)
-        return body
-
-    def _letter_A(body, cx, cz):
-        """A = triangle-ish with center cutout (simplified)."""
-        # Bottom-left window
-        body = _cut_rect(body, cx - letter_w * 0.2, cz - letter_h * 0.3,
-                         letter_w * 0.2, letter_h * 0.25)
-        # Bottom-right window
-        body = _cut_rect(body, cx + letter_w * 0.2, cz - letter_h * 0.3,
-                         letter_w * 0.2, letter_h * 0.25)
-        return body
-
-    def _letter_B(body, cx, cz):
-        """B = two stacked windows on the right side."""
-        body = _cut_rect(body, cx + letter_w * 0.08, cz + letter_h * 0.2,
-                         letter_w * 0.45, letter_h * 0.2)
-        body = _cut_rect(body, cx + letter_w * 0.08, cz - letter_h * 0.2,
-                         letter_w * 0.45, letter_h * 0.2)
-        return body
-
-    # Render "SOMNI"
-    letters_somni = [_letter_S, _letter_O, _letter_M, _letter_N, _letter_I]
-    for fn in letters_somni:
-        body = fn(body, x + letter_w / 2, text_z)
-        x += letter_w + gap
-
-    # Space
-    x += space_w
-
-    # Render "LABS"
-    letters_labs = [_letter_L, _letter_A, _letter_B, _letter_S]
-    for fn in letters_labs:
-        body = fn(body, x + letter_w / 2, text_z)
-        x += letter_w + gap
-
-    # --- 3. Horizontal accent line above and below text ---
-    line_w = plate_w * 0.85
-    line_h = stroke * 0.6
-    for z_offset in [effective_plate_h * 0.4, -effective_plate_h * 0.4]:
-        accent = (
-            cq.Workplane("XZ")
-            .center(0, face_z_center + z_offset)
-            .rect(line_w, line_h)
-            .extrude(plate_proud + 1)
-            .translate((0, face_y + plate_proud + 1, 0))
-        )
-        body = body.union(accent)
-
-    # --- 4. Ventilation slots above and below plate ---
-    slot_w = plate_w * 0.6
-    slot_h = 2.5
-    slot_gap = 5
-
-    # Upper slots
-    slot_z = face_z_center + effective_plate_h / 2 + 4
-    while slot_z + slot_h < z_hi - 2:
-        slot = (
-            cq.Workplane("XZ")
-            .center(0, slot_z)
-            .rect(slot_w, slot_h)
-            .extrude(wall + 1)
-            .translate((0, face_y, 0))
-        )
-        body = body.cut(slot)
-        slot_z += slot_h + slot_gap
-
-    # Lower slots
-    slot_z = face_z_center - effective_plate_h / 2 - 4
-    while slot_z - slot_h > z_lo + 2:
-        slot = (
-            cq.Workplane("XZ")
-            .center(0, slot_z)
-            .rect(slot_w, slot_h)
-            .extrude(wall + 1)
-            .translate((0, face_y, 0))
-        )
-        body = body.cut(slot)
-        slot_z -= slot_h + slot_gap
+    # --- 4. LED channel behind the text (inside of front wall) ---
+    # Shallow channel for LED strip to backlight the letter cutouts
+    led_channel_w = total_text_w + 20
+    led_channel_h = letter_h + 10
+    led_depth = LED_CHANNEL_D
+    led_channel = (
+        cq.Workplane("XZ")
+        .center(0, face_z_center)
+        .rect(led_channel_w, led_channel_h)
+        .extrude(led_depth)
+        .translate((0, face_y - wall + 0.01, 0))
+    )
+    body = body.cut(led_channel)
 
     return body
+
+
+def _get_letter_rects(letter, letter_w, letter_h, stroke):
+    """
+    Return list of (cx, cz, w, h) rectangles that make up a letter.
+
+    Coordinates are relative to the letter center (0, 0).
+    These are the SOLID parts of the letter — we cut these through the wall.
+    """
+    hw = letter_w / 2
+    hh = letter_h / 2
+    s = stroke
+    rects = []
+
+    if letter == 'S':
+        rects.append((0, hh - s/2, letter_w, s))           # top bar
+        rects.append((0, 0, letter_w, s))                   # middle bar
+        rects.append((0, -hh + s/2, letter_w, s))           # bottom bar
+        rects.append((-hw + s/2, hh/4, s, hh - s))         # left upper
+        rects.append((hw - s/2, -hh/4, s, hh - s))         # right lower
+
+    elif letter == 'O':
+        rects.append((0, hh - s/2, letter_w, s))           # top
+        rects.append((0, -hh + s/2, letter_w, s))          # bottom
+        rects.append((-hw + s/2, 0, s, letter_h))          # left
+        rects.append((hw - s/2, 0, s, letter_h))           # right
+
+    elif letter == 'M':
+        rects.append((-hw + s/2, 0, s, letter_h))          # left leg
+        rects.append((hw - s/2, 0, s, letter_h))           # right leg
+        rects.append((-hw/2 + s/4, hh/4, s, hh))           # left inner
+        rects.append((hw/2 - s/4, hh/4, s, hh))            # right inner
+        rects.append((0, hh - s/2, letter_w, s))           # top bar
+
+    elif letter == 'N':
+        rects.append((-hw + s/2, 0, s, letter_h))          # left leg
+        rects.append((hw - s/2, 0, s, letter_h))           # right leg
+        rects.append((0, 0, s * 1.5, letter_h * 0.7))      # diagonal (simplified)
+
+    elif letter == 'I':
+        rects.append((0, 0, s, letter_h))                  # vertical bar
+        rects.append((0, hh - s/2, letter_w * 0.6, s))     # top serif
+        rects.append((0, -hh + s/2, letter_w * 0.6, s))    # bottom serif
+
+    elif letter == 'L':
+        rects.append((-hw + s/2, 0, s, letter_h))          # vertical bar
+        rects.append((0, -hh + s/2, letter_w, s))          # bottom bar
+
+    elif letter == 'A':
+        rects.append((-hw + s/2, 0, s, letter_h))          # left leg
+        rects.append((hw - s/2, 0, s, letter_h))           # right leg
+        rects.append((0, hh - s/2, letter_w, s))           # top bar
+        rects.append((0, s/2, letter_w - s * 2, s))        # crossbar
+
+    elif letter == 'B':
+        rects.append((-hw + s/2, 0, s, letter_h))          # left vertical
+        rects.append((0, hh - s/2, letter_w, s))           # top bar
+        rects.append((0, 0, letter_w, s))                   # middle bar
+        rects.append((0, -hh + s/2, letter_w, s))          # bottom bar
+        rects.append((hw - s/2, hh/4, s, hh/2 - s/2))     # right top
+        rects.append((hw - s/2, -hh/4, s, hh/2 - s/2))    # right bottom
+
+    return rects
 
 
 def cut_pocket(body, cx, cy, pocket_w, pocket_d, pocket_h, floor_z, corner_r=2):
