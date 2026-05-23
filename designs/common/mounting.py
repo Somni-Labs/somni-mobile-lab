@@ -233,37 +233,27 @@ def build_hero_face(body, width, depth, height, wall=WALL, chamfer=CHAMFER_SIZE,
     """
     Build the full hero face treatment on the front wall (+Y face).
 
-    Three-layer depth treatment:
-    1. Raised center logo plate with recessed background + raised logo shapes
-    2. Two grid panels (above and below logo plate), recessed into wall
-    3. Frame grooves separating the three zones
+    Designed to be unmistakably visible in cadquery-server's 3D viewer:
+    1. Large raised center plate that breaks the silhouette (protrudes outward)
+    2. "SOMNI LABS" text cut THROUGH the plate as window cutouts
+    3. Angular accent cuts at top/bottom edges of the plate
+    4. Ventilation-style horizontal slot array above and below the plate
 
-    Total depth variation: ~5mm (deepest pocket to top of logo shapes).
+    The text and slots are through-cuts, which show as clearly distinct
+    geometry in any renderer regardless of lighting/shading.
     """
     hd = depth / 2
     face_y = hd  # outer surface of front wall
     chamfer = min(chamfer, height * 0.20)  # match shell auto-cap
 
-    # Usable Z range on the front face (between chamfer zones).
-    # The chamfer itself defines the safe boundary — no extra margin needed
-    # because the logo plate protrudes OUTWARD from the flat wall surface.
     z_lo = chamfer
     z_hi = height - chamfer
     face_z_center = (z_lo + z_hi) / 2
     face_z_extent = z_hi - z_lo
 
-    # Allocate 65% of available height to the logo plate (was 60%);
-    # the remaining 35% is split between upper/lower grid panels.
-    # On shorter pages, this means the logo plate dominates the face.
-    # On taller pages, grid panels get enough space to render.
-    effective_plate_h = min(plate_h, face_z_extent * 0.65)
+    effective_plate_h = min(plate_h, face_z_extent * 0.55)
 
-    # NOTE: CadQuery's XZ workplane extrudes in the -Y direction.
-    # To place geometry spanning [y_lo, y_hi], extrude (y_hi - y_lo)
-    # and translate to (0, y_hi, 0) so it extends backward from y_hi.
-
-    # --- 1. Raised logo plate ---
-    # Spans face_y to face_y + plate_proud (protrudes outward from wall)
+    # --- 1. Large raised plate — breaks the case silhouette ---
     logo_plate = (
         cq.Workplane("XZ")
         .center(0, face_z_center)
@@ -273,111 +263,173 @@ def build_hero_face(body, width, depth, height, wall=WALL, chamfer=CHAMFER_SIZE,
     )
     body = body.union(logo_plate)
 
-    # Recess the plate surface (except logo shapes)
-    # Cut from the plate outer surface inward by plate_recess
-    plate_recess_cut = (
-        cq.Workplane("XZ")
-        .center(0, face_z_center)
-        .rect(plate_w - 4, effective_plate_h - 4)
-        .extrude(plate_recess)
-        .translate((0, face_y + plate_proud, 0))
-    )
-    body = body.cut(plate_recess_cut)
+    # --- 2. "SOMNI LABS" through-cut text ---
+    # CadQuery text() requires fontconfig in the container, which is missing.
+    # Instead, build geometric block letters that are unmistakable.
+    # Each letter is a combination of rectangles cut through the plate.
+    #
+    # We cut windows through the raised plate so the recessed wall surface
+    # behind shows through — creating visible letter shapes.
+    cut_depth = plate_proud + 1  # cut all the way through the plate
+    cut_y = face_y + plate_proud + 0.01  # start from outer surface
 
-    # Logo shapes stay at full proud height — they fill the recessed zone
-    # back up to the plate's outer surface. Use a small overlap (0.1mm into
-    # the recessed surface) to ensure the union has overlapping volume and
-    # doesn't fail due to coincident faces.
-    logo_overlap = 0.1
-    # Logo shapes span from (plate top - recess - overlap) to (plate top + 0.01)
-    logo_extrude = plate_recess + logo_overlap + 0.01
-    logo_translate_y = face_y + plate_proud + 0.01  # top of logo shape
+    # Letter sizing — scale to plate dimensions
+    letter_h = min(effective_plate_h * 0.35, 14)  # letter height
+    letter_w = letter_h * 0.6  # letter width
+    stroke = max(letter_h * 0.22, 2.0)  # stroke thickness
+    gap = letter_h * 0.25  # gap between letters
+    space_w = letter_h * 0.4  # space between SOMNI and LABS
 
-    # Main nameplate rectangle — scaled to 60% of plate width for prominence
-    nameplate_w = min(plate_w * 0.6, effective_plate_h * 4)
-    nameplate = (
-        cq.Workplane("XZ")
-        .center(0, face_z_center)
-        .rect(nameplate_w, min(16, effective_plate_h * 0.5))
-        .extrude(logo_extrude)
-        .translate((0, logo_translate_y, 0))
-    )
-    body = body.union(nameplate)
+    # Total text width: S-O-M-N-I [space] L-A-B-S = 9 letters + 1 space
+    total_w = 9 * (letter_w + gap) - gap + space_w
+    text_x_start = -total_w / 2
 
-    # Accent bar below nameplate — thin horizontal stripe
-    accent_z = max(face_z_center - effective_plate_h * 0.35,
-                   face_z_center - effective_plate_h / 2 + 2)
-    accent_bar = (
-        cq.Workplane("XZ")
-        .center(0, accent_z)
-        .rect(min(plate_w * 0.8, plate_w - 4), 2.5)
-        .extrude(logo_extrude)
-        .translate((0, logo_translate_y, 0))
-    )
-    body = body.union(accent_bar)
-
-    # Flanking chevrons (scaled to plate width)
-    chevron_dx = min(plate_w * 0.4, plate_w / 2 - 5)
-    for dx in [-chevron_dx, chevron_dx]:
-        chevron = (
+    def _cut_rect(body, cx, cz, w, h):
+        """Cut a rectangle through the plate at the given center."""
+        cut = (
             cq.Workplane("XZ")
-            .center(dx, face_z_center)
-            .rect(6, min(20, effective_plate_h - 2))
-            .extrude(logo_extrude)
-            .translate((0, logo_translate_y, 0))
+            .center(cx, cz)
+            .rect(w, h)
+            .extrude(cut_depth)
+            .translate((0, cut_y, 0))
         )
-        body = body.union(chevron)
+        return body.cut(cut)
 
-    # --- 2. Grid panels (above and below logo plate) ---
-    hex_panel_w = plate_w + 20  # slightly wider than logo plate
+    # Build each letter as cutouts in the plate.
+    # Letters are made by cutting away the NEGATIVE space (the openings).
+    # This creates block letters where the remaining plate material IS the letter.
+    x = text_x_start
+    text_z = face_z_center  # center of text vertically on plate
 
-    # Upper panel: from just above the groove to the top chamfer line
-    upper_z_lo = face_z_center + effective_plate_h / 2 + groove_w + 0.5
-    upper_z_hi = z_hi
-    upper_h = upper_z_hi - upper_z_lo
-    upper_cz = (upper_z_lo + upper_z_hi) / 2
+    # --- Letter definitions ---
+    # Each letter cuts rectangular holes to form the letter shape.
+    # We cut the COUNTER (inside) of each letter.
 
-    # Lower panel: from bottom chamfer line to just below the groove
-    lower_z_lo = z_lo
-    lower_z_hi = face_z_center - effective_plate_h / 2 - groove_w - 0.5
-    lower_h = lower_z_hi - lower_z_lo
-    lower_cz = (lower_z_lo + lower_z_hi) / 2
+    def _letter_S(body, cx, cz):
+        """S = three horizontal bars with alternating side openings."""
+        # Top-right opening
+        body = _cut_rect(body, cx + letter_w * 0.15, cz + letter_h * 0.25,
+                         letter_w * 0.5, letter_h * 0.18)
+        # Bottom-left opening
+        body = _cut_rect(body, cx - letter_w * 0.15, cz - letter_h * 0.25,
+                         letter_w * 0.5, letter_h * 0.18)
+        return body
 
-    for panel_cz, panel_h in [(upper_cz, upper_h), (lower_cz, lower_h)]:
-        if panel_h < 5:
-            continue
+    def _letter_O(body, cx, cz):
+        """O = rectangle with center cutout."""
+        body = _cut_rect(body, cx, cz,
+                         letter_w - stroke * 2, letter_h - stroke * 2)
+        return body
 
-        # Cut the recessed panel into the front wall
-        # Cuts from face_y inward by hex_panel_recess
-        panel_recess_box = (
+    def _letter_M(body, cx, cz):
+        """M = two cutouts at bottom leaving legs and center V."""
+        # Left bottom window
+        body = _cut_rect(body, cx - letter_w * 0.2, cz - letter_h * 0.15,
+                         letter_w * 0.22, letter_h * 0.5)
+        # Right bottom window
+        body = _cut_rect(body, cx + letter_w * 0.2, cz - letter_h * 0.15,
+                         letter_w * 0.22, letter_h * 0.5)
+        return body
+
+    def _letter_N(body, cx, cz):
+        """N = two vertical legs with a diagonal (simplified as two windows)."""
+        # Center window (leaving two legs and connecting bar)
+        body = _cut_rect(body, cx, cz,
+                         letter_w - stroke * 2.5, letter_h * 0.35)
+        return body
+
+    def _letter_I(body, cx, cz):
+        """I = thin vertical bar (no cutouts needed — just a narrow block)."""
+        # Cut away sides to leave thin center bar
+        side_cut_w = (letter_w - stroke * 1.5) / 2
+        body = _cut_rect(body, cx - letter_w / 2 + side_cut_w / 2, cz,
+                         side_cut_w, letter_h * 0.65)
+        body = _cut_rect(body, cx + letter_w / 2 - side_cut_w / 2, cz,
+                         side_cut_w, letter_h * 0.65)
+        return body
+
+    def _letter_L(body, cx, cz):
+        """L = vertical bar with bottom shelf (cut top-right window)."""
+        body = _cut_rect(body, cx + letter_w * 0.15, cz + letter_h * 0.1,
+                         letter_w * 0.55, letter_h * 0.6)
+        return body
+
+    def _letter_A(body, cx, cz):
+        """A = triangle-ish with center cutout (simplified)."""
+        # Bottom-left window
+        body = _cut_rect(body, cx - letter_w * 0.2, cz - letter_h * 0.3,
+                         letter_w * 0.2, letter_h * 0.25)
+        # Bottom-right window
+        body = _cut_rect(body, cx + letter_w * 0.2, cz - letter_h * 0.3,
+                         letter_w * 0.2, letter_h * 0.25)
+        return body
+
+    def _letter_B(body, cx, cz):
+        """B = two stacked windows on the right side."""
+        body = _cut_rect(body, cx + letter_w * 0.08, cz + letter_h * 0.2,
+                         letter_w * 0.45, letter_h * 0.2)
+        body = _cut_rect(body, cx + letter_w * 0.08, cz - letter_h * 0.2,
+                         letter_w * 0.45, letter_h * 0.2)
+        return body
+
+    # Render "SOMNI"
+    letters_somni = [_letter_S, _letter_O, _letter_M, _letter_N, _letter_I]
+    for fn in letters_somni:
+        body = fn(body, x + letter_w / 2, text_z)
+        x += letter_w + gap
+
+    # Space
+    x += space_w
+
+    # Render "LABS"
+    letters_labs = [_letter_L, _letter_A, _letter_B, _letter_S]
+    for fn in letters_labs:
+        body = fn(body, x + letter_w / 2, text_z)
+        x += letter_w + gap
+
+    # --- 3. Horizontal accent line above and below text ---
+    line_w = plate_w * 0.85
+    line_h = stroke * 0.6
+    for z_offset in [effective_plate_h * 0.4, -effective_plate_h * 0.4]:
+        accent = (
             cq.Workplane("XZ")
-            .center(0, panel_cz)
-            .rect(hex_panel_w, panel_h)
-            .extrude(hex_panel_recess)
+            .center(0, face_z_center + z_offset)
+            .rect(line_w, line_h)
+            .extrude(plate_proud + 1)
+            .translate((0, face_y + plate_proud + 1, 0))
+        )
+        body = body.union(accent)
+
+    # --- 4. Ventilation slots above and below plate ---
+    slot_w = plate_w * 0.6
+    slot_h = 2.5
+    slot_gap = 5
+
+    # Upper slots
+    slot_z = face_z_center + effective_plate_h / 2 + 4
+    while slot_z + slot_h < z_hi - 2:
+        slot = (
+            cq.Workplane("XZ")
+            .center(0, slot_z)
+            .rect(slot_w, slot_h)
+            .extrude(wall + 1)
             .translate((0, face_y, 0))
         )
-        body = body.cut(panel_recess_box)
+        body = body.cut(slot)
+        slot_z += slot_h + slot_gap
 
-        # Build grid walls on the recessed surface
-        # Grid is built at origin extruding in -Y; translate so the grid
-        # top surface sits at face_y - hex_panel_recess (the recessed surface)
-        grid = _build_grid_panel(hex_panel_w, panel_h)
-        if grid is not None:
-            grid = grid.translate((0, face_y - hex_panel_recess, panel_cz))
-            body = body.union(grid)
-
-    # --- 3. Frame grooves ---
-    # Cut into the front wall surface
-    for groove_z in [face_z_center + effective_plate_h / 2 + groove_w / 2,
-                     face_z_center - effective_plate_h / 2 - groove_w / 2]:
-        groove = (
+    # Lower slots
+    slot_z = face_z_center - effective_plate_h / 2 - 4
+    while slot_z - slot_h > z_lo + 2:
+        slot = (
             cq.Workplane("XZ")
-            .center(0, groove_z)
-            .rect(hex_panel_w + 10, groove_w)
-            .extrude(groove_d)
+            .center(0, slot_z)
+            .rect(slot_w, slot_h)
+            .extrude(wall + 1)
             .translate((0, face_y, 0))
         )
-        body = body.cut(groove)
+        body = body.cut(slot)
+        slot_z -= slot_h + slot_gap
 
     return body
 
