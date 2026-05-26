@@ -22,7 +22,12 @@ if _repo_root not in sys.path:
 os.environ['_CQ_ASSEMBLY'] = '1'
 
 import cadquery as cq
-from cq_server.ui import ui, show_object
+
+try:
+    from cq_server.ui import ui, show_object
+    _cq_server = True
+except ImportError:
+    _cq_server = False
 
 from designs.shell.page1_shell import build_page1
 from designs.shell.page2_shell import build_page2
@@ -66,41 +71,42 @@ page2 = page2.union(p2_hinges_bot).union(p2_hinges_top)
 p3_hinges = build_hinge_knuckles(0, parity="odd")
 page3 = page3.union(p3_hinges)
 
-# ============================================================
-# Show in stacked assembly view
-# ============================================================
-show_object(page1, name="Page 1 - Bottom (Power)",
-            options={"color": (0.27, 0.51, 0.71, 0.7)})
+if _cq_server:
+    # ============================================================
+    # Show in stacked assembly view
+    # ============================================================
+    show_object(page1, name="Page 1 - Bottom (Power)",
+                options={"color": (0.27, 0.51, 0.71, 0.7)})
 
-p2_z = PAGE1_H + 2  # 2mm visual gap
-page2_view = page2.translate((0, 0, p2_z))
-show_object(page2_view, name="Page 2 - Middle (Screens)",
-            options={"color": (0.56, 0.74, 0.56, 0.7)})
+    p2_z = PAGE1_H + 2  # 2mm visual gap
+    page2_view = page2.translate((0, 0, p2_z))
+    show_object(page2_view, name="Page 2 - Middle (Screens)",
+                options={"color": (0.56, 0.74, 0.56, 0.7)})
 
-p3_z = p2_z + PAGE2_H + 2
-page3_view = page3.translate((0, 0, p3_z))
-show_object(page3_view, name="Page 3 - Top (Accessories)",
-            options={"color": (1.0, 0.63, 0.48, 0.7)})
+    p3_z = p2_z + PAGE2_H + 2
+    page3_view = page3.translate((0, 0, p3_z))
+    show_object(page3_view, name="Page 3 - Top (Accessories)",
+                options={"color": (1.0, 0.63, 0.48, 0.7)})
 
-# ============================================================
-# Show key subsystems as separate objects
-# ============================================================
-# Starlink pedestal base (inside Page 1)
-pedestal = build_pedestal_base()
-pedestal_view = pedestal.translate((0, 0, 3))  # on Page 1 floor
-show_object(pedestal_view, name="Starlink Pedestal Base",
-            options={"color": (0.3, 0.3, 0.6, 0.5)})
+    # ============================================================
+    # Show key subsystems as separate objects
+    # ============================================================
+    # Starlink pedestal base (inside Page 1)
+    pedestal = build_pedestal_base()
+    pedestal_view = pedestal.translate((0, 0, 3))  # on Page 1 floor
+    show_object(pedestal_view, name="Starlink Pedestal Base",
+                options={"color": (0.3, 0.3, 0.6, 0.5)})
 
-# Starlink platform (raised position for visual)
-platform = build_pedestal_platform()
-platform_view = platform.translate((0, 0, PAGE1_H + 20))  # shown in raised position
-show_object(platform_view, name="Starlink Platform (raised)",
-            options={"color": (0.3, 0.5, 0.7, 0.5)})
+    # Starlink platform (raised position for visual)
+    platform = build_pedestal_platform()
+    platform_view = platform.translate((0, 0, PAGE1_H + 20))  # shown in raised position
+    show_object(platform_view, name="Starlink Platform (raised)",
+                options={"color": (0.3, 0.5, 0.7, 0.5)})
 
-# Electronics bay (in Page 2 spine)
-ebay = build_electronics_bay()
-ebay_view = ebay.rotate((0, 0, 0), (0, 1, 0), 90).translate((
-    -CASE_OUTER_W / 2 + 5, 0, p2_z + PAGE2_H / 2
-))
-show_object(ebay_view, name="Electronics Bay",
-            options={"color": (0.2, 0.2, 0.2, 0.6)})
+    # Electronics bay (in Page 2 spine)
+    ebay = build_electronics_bay()
+    ebay_view = ebay.rotate((0, 0, 0), (0, 1, 0), 90).translate((
+        -CASE_OUTER_W / 2 + 5, 0, p2_z + PAGE2_H / 2
+    ))
+    show_object(ebay_view, name="Electronics Bay",
+                options={"color": (0.2, 0.2, 0.2, 0.6)})
